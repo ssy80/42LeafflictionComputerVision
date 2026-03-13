@@ -50,11 +50,10 @@ def pie_chart(df: pd.DataFrame, dir_name: str)-> None:
     """
     plt.pie(
         df["count"],
-        #labels=df["index"],
+        labels=df.index,
         autopct="%1.1f%%",
         startangle=180,
     )
-
     plt.title(f"{dir_name} class Distribution")
     plt.show()
     
@@ -69,7 +68,6 @@ def bar_chart(df: pd.DataFrame, dir_name: str)-> None:
     plt.title(f"{dir_name} class Distribution")
     plt.xlabel("Class")
     plt.ylabel("Count")
-    #plt.xticks(rotation=45, ha="right")
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.show()
@@ -90,7 +88,6 @@ def main():
         
         print(sub_dirs)
         print(dir_name)
-
 
         images_in_dir_dict = {}
         for leaf_dir in sub_dirs:
