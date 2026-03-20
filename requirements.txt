@@ -4,3 +4,4 @@ seaborn
 numpy
 scikit-learn
 opencv-python
+plantcv
