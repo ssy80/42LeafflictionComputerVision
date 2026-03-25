@@ -3,9 +3,10 @@ import sys
 import os
 import numpy as np
 from pathlib import Path
+from utils import is_image_file
+ 
 
-
-def is_image_file(filepath: Path)-> None:
+'''def is_image_file(filepath: Path)-> None:
     """
     Check filepath is an image file (.jpg, .jpeg) 
     """
@@ -14,6 +15,7 @@ def is_image_file(filepath: Path)-> None:
 
     if filepath.suffix.lower() not in (".jpg", ".jpeg"):
         raise ValueError("file must be a .jpg or .jpeg image")
+'''
 
 
 def flip(img: np.ndarray):
@@ -55,6 +57,7 @@ def crop(img: np.ndarray):
     x2 = int(0.9 * w)
     return img[y1:y2, x1:x2]
 
+
 def distortion(img: np.ndarray):
     """
     Blur the image
@@ -78,10 +81,10 @@ def  augmentation(filepath: Path)-> None:
     and save to the same directory.
     """
     current_dir = filepath.parent
-    print(current_dir)
+    #print(current_dir)
 
     filename = filepath.stem
-    print(filename)
+    #print(filename)
 
     img = cv2.imread(str(filepath))
     
@@ -109,7 +112,7 @@ def main():
             return
 
         filepath = Path(sys.argv[1])
-        print(filepath)
+        #print(filepath)
 
         is_image_file(filepath)
         augmentation(filepath)

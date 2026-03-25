@@ -8,15 +8,8 @@ from utils import is_path_dir
 
 
 def list_dirs(dir_path: str)-> list[str]:
-    """Return a sorted list of directories inside ``path``.
-
-    Args:
-        path: Base directory to inspect.
-        recursive: When True, include nested directories.
-        max_depth: Optional depth limit when ``recursive`` is enabled.
-
-    Returns:
-        A list of directory paths as strings.
+    """
+    Return a sorted list of directories inside ``path``.
     """
     is_path_dir(dir_path)    
     base_path = Path(dir_path)
@@ -29,12 +22,11 @@ def list_dirs(dir_path: str)-> list[str]:
 
 def count_images(dir_path: str)-> int:
     """
-    Count numbe of image file in the dir_path
+    Count number of image file in the dir_path
     """
     is_path_dir(dir_path)
     path = Path(dir_path)
 
-    #image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff", ".webp"}
     image_extensions = {".jpg", ".jpeg"}
 
     return sum(
@@ -62,7 +54,6 @@ def bar_chart(df: pd.DataFrame, dir_name: str)-> None:
     """
     Display a bar chart with DataFrame index on x-axis and counts on y-axis.
     """
-    #sns.set_theme(style="whitegrid")
     plt.figure(figsize=(10, 6))
     sns.barplot(x=df.index, y=df["count"], palette="viridis", hue=df.index, legend=False)
     plt.title(f"{dir_name} class Distribution")
@@ -85,9 +76,6 @@ def main():
         dir_path = str(sys.argv[1])
         dir_name = Path(dir_path).name
         sub_dirs = list_dirs(dir_path)
-        
-        print(sub_dirs)
-        print(dir_name)
 
         images_in_dir_dict = {}
         for leaf_dir in sub_dirs:
@@ -95,10 +83,7 @@ def main():
             folder_name = Path(leaf_dir).name
             images_in_dir_dict[folder_name] = count
 
-        print(images_in_dir_dict)
-
         df = pd.DataFrame.from_dict(images_in_dir_dict, orient='index', columns=['count'])
-        print(df)
         
         pie_chart(df, dir_name)
         bar_chart(df, dir_name)

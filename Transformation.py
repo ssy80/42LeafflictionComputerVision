@@ -1,140 +1,444 @@
-import argparse
-from pathlib import Path
-
 import cv2
+import sys
+import os
 import numpy as np
+from pathlib import Path
+import argparse
+from utils import is_path_dir, is_image_file
 from plantcv import plantcv as pcv
-
-from utils import is_path_dir
-
-
-LEAF_MASK_SUFFIX = "_leaf_mask.png"
-STRUCTURE_MASK_SUFFIX = "_structure_mask.png"
-TRANSFORM_SUFFIX = "_mask_transform.png"
+import glob
+import matplotlib.pyplot as plt
+import shutil
 
 
-def is_image_file(filepath: Path) -> None:
-    """Validate that the source path points to a supported image file."""
-    if not filepath.is_file():
-        raise FileNotFoundError(f"file not found: {filepath}")
+def plot_leaf_color_histogram(img, mask=None):
+    """
+    img: BGR image from cv2.imread(...)
+    mask: binary mask, 255 = keep pixel, 0 = ignore
+    """
+    # ensure 3-channel image
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+    
+    if mask is None:
+        mask = np.full(img.shape[:2], 255, dtype="uint8") # 2d mask of 255 values (white)
 
-    if filepath.suffix.lower() not in (".jpg", ".jpeg", ".png"):
-        raise ValueError("file must be a .jpg, .jpeg, or .png image")
+    # Keep only masked pixels
+    valid = mask > 0
+
+    # Convert color spaces
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+
+    # Extract channels inside mask
+    red = rgb[:, :, 0][valid]
+    green = rgb[:, :, 1][valid]
+    blue = rgb[:, :, 2][valid]
+
+    hue = hsv[:, :, 0][valid]
+    saturation = hsv[:, :, 1][valid]
+    value = hsv[:, :, 2][valid]
+
+    lightness = lab[:, :, 0][valid]
+    green_magenta = lab[:, :, 1][valid]
+    blue_yellow = lab[:, :, 2][valid]
+
+    channels = {
+        "blue": blue,
+        "blue-yellow": blue_yellow,
+        "green": green,
+        "green-magenta": green_magenta,
+        "hue": hue,
+        "lightness": lightness,
+        "red": red,
+        "saturation": saturation,
+        "value": value,
+    }
+
+    colors = {
+        "blue": "blue",
+        "blue-yellow": "yellow",
+        "green": "green",
+        "green-magenta": "magenta",
+        "hue": "#7d3cff",
+        "lightness": "gray",
+        "red": "red",
+        "saturation": "cyan",
+        "value": "orange",
+    }
+
+    plt.figure(figsize=(11, 6))
+
+    total_pixels = np.count_nonzero(valid)
+
+    for name, vals in channels.items():
+        hist, bins = np.histogram(vals, bins=256, range=(0, 256))
+        hist_percent = (hist / total_pixels) * 100
+        plt.plot(bins[:-1], hist_percent, label=name, color=colors[name], linewidth=1.5)
+
+    plt.xlabel("Pixel intensity", fontsize=16)
+    plt.ylabel("Proportion of pixels (%)", fontsize=16)
+    plt.xlim(0, 255)
+    plt.legend(title="color Channel", bbox_to_anchor=(1.03, 0.5), loc="center left")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
 
 
-def keep_largest_contour(mask: np.ndarray) -> np.ndarray:
-    """Reduce a binary mask to its largest connected contour."""
+def get_max_width(center_v):
+    # 1. Flatten the list of points into a simple (N, 2) array
+    # This turns [(1,2), (1,2)...] into one big table of X and Y
+    all_pts = np.squeeze(np.array(center_v))
+    
+    # 2. Group by Y-coordinate
+    # We find all unique Y values (the "slices")
+    unique_ys = np.unique(all_pts[:, 1])
+    
+    max_w = 0
+    for y in unique_ys:
+        # Get all X coordinates for this specific Y slice
+        x_coords = all_pts[all_pts[:, 1] == y][:, 0]
+        
+        if len(x_coords) >= 2:
+            # Width is Max X minus Min X at this height
+            w = np.ptp(x_coords) # ptp = "peak to peak" (max - min)
+            if w > max_w:
+                max_w = w
+                
+    return max_w
+
+
+def pseudolandmarks(img: np.ndarray, leaf_features: dict):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small holes
+    Remove salt-pepper noise
+    Use pseudolandmarks x-axis
+    Return the image created
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+    #mask = pcv.fill_holes(mask)            
+    mask = pcv.fill(mask, size=50)
+         
+    mask = pcv.median_blur(mask, ksize=3)
+    
+    pcv.params.text_size = 0
+    pcv.params.debug = "print"
+    pcv.params.debug_outdir = "./debug"
+    debug_dir = pcv.params.debug_outdir
+
+    if os.path.exists(debug_dir):
+        shutil.rmtree(debug_dir)
+        os.makedirs(debug_dir)
+    else:
+        os.makedirs(debug_dir)
+
+    pcv.outputs.clear()
+
+    top, bottom, center_v = pcv.homology.y_axis_pseudolandmarks(img=img, mask=mask)
+
+    files = glob.glob(os.path.join(debug_dir, "*")) # only 1 file
+    debug_img = cv2.imread(files[0])
+
+    # Extract features
+    #leaf_features["relative_width"] = relative_width
+    return debug_img
+
+
+def analyze(img: np.ndarray, leaf_features: dict):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small holes
+    Remove salt-pepper noise
+    use plantcv analyze
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+    #mask = pcv.fill_holes(mask)            
+    mask = pcv.fill(mask, size=50)         
+    mask = pcv.median_blur(mask, ksize=3)
+    
+    pcv.params.text_size = 0
+    pcv.outputs.clear()
+
+    shape_img = pcv.analyze.size(img=img, labeled_mask=mask, n_labels=1, label="leaf_data")
+    
+    # Extract features
+
+    leaf_observations = pcv.outputs.observations['leaf_data_1']  # Get the dictionary for this specific label
+    print(leaf_observations.keys())
+
+    area = leaf_observations['area']['value']
+    solidity = leaf_observations['solidity']['value']
+    perimeter = leaf_observations['perimeter']['value']
+    ellipse_eccentricity = leaf_observations['ellipse_eccentricity']['value']
+    longest_path = leaf_observations['longest_path']['value']
+    width = leaf_observations['width']['value']
+    height = leaf_observations['height']['value']
+    #convex_hull_perimeter = leaf_observations['convex_hull_perimeter']['value']
+    convex_hull_area = leaf_observations['convex_hull_area']['value']
+    relative_width = width / height
+    circularity = (4 * 3.14159 * area) / (perimeter**2)
+    relative_perimeter = perimeter / area
+
+    #convexity = convex_hull_perimeter / perimeter
+    extent = area / (width * height)
+    
+    pcv.outputs.clear()
+    
+    # Convert image to LAB color space for scientific greenness
+    lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    
+    # Use the mask to "select" only leaf pixels
+    # mask > 0 creates a list of True/False coordinates
+    leaf_pixels_a = lab_img[:, :, 1][mask > 0]
+    
+    # Calculate the Mean Greenness (The 'a' channel)
+    # A very low negative number (e.g., -20) means very green. A number near 0 or positive means brown/gray.
+    mean_greenness_a = np.mean(leaf_pixels_a) if leaf_pixels_a.size > 0 else 0
+    std_greenness_a = np.std(leaf_pixels_a) if leaf_pixels_a.size > 0 else 0
+
+
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    largest = np.zeros_like(mask)
+    rugosity = 0
+    hull_ratio = 0
 
     if contours:
-        cv2.drawContours(largest, [max(contours, key=cv2.contourArea)], -1, 255, thickness=cv2.FILLED)
+        # Assume the largest contour is the leaf
+        cnt = max(contours, key=cv2.contourArea)
+        
+        # 2. Calculate the Convex Hull
+        hull = cv2.convexHull(cnt)
+        
+        # 3. Calculate the Perimeter of that Hull
+        # True means the curve is closed
+        convex_hull_perimeter = cv2.arcLength(hull, True)
 
-    return largest
-
-
-def remove_small_components(mask: np.ndarray, min_area: int) -> np.ndarray:
-    """Remove connected components smaller than the requested area."""
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    filtered = np.zeros_like(mask)
-
-    for label in range(1, num_labels):
-        if stats[label, cv2.CC_STAT_AREA] >= min_area:
-            filtered[labels == label] = 255
-
-    return filtered
-
-
-def build_leaf_mask(img: np.ndarray) -> np.ndarray:
-    """Create a clean leaf silhouette from the original RGB image."""
-    saturation = pcv.rgb2gray_hsv(rgb_img=img, channel="s")
-    saturation = pcv.gaussian_blur(img=saturation, ksize=(5, 5), sigma_x=0, sigma_y=None)
-    saturation_mask = pcv.threshold.binary(gray_img=saturation, threshold=35, object_type="light")
-
-    green_magenta = pcv.rgb2gray_lab(rgb_img=img, channel="a")
-    green_mask = pcv.threshold.binary(gray_img=green_magenta, threshold=121, object_type="dark")
-
-    leaf_mask = cv2.bitwise_or(saturation_mask, green_mask)
-    leaf_mask = pcv.fill_holes(leaf_mask)
-    leaf_mask = remove_small_components(leaf_mask, min_area=300)
-
-    return keep_largest_contour(leaf_mask)
-
-
-def build_structure_mask(img: np.ndarray, leaf_mask: np.ndarray) -> np.ndarray:
-    """Keep the stronger veins, edges, and lesions inside the leaf mask."""
-    hue = pcv.rgb2gray_hsv(rgb_img=img, channel="h")
-    saturation = pcv.rgb2gray_hsv(rgb_img=img, channel="s")
-    value = pcv.rgb2gray_hsv(rgb_img=img, channel="v")
-    blue_yellow = pcv.rgb2gray_lab(rgb_img=img, channel="b")
-
-    green_hue_mask = cv2.inRange(hue, 28, 95)
-    saturated_mask = pcv.threshold.binary(gray_img=saturation, threshold=55, object_type="light")
-    darker_green_mask = pcv.threshold.binary(gray_img=value, threshold=175, object_type="dark")
-    green_structure = cv2.bitwise_and(green_hue_mask, saturated_mask)
-    green_structure = cv2.bitwise_and(green_structure, darker_green_mask)
-
-    lesion_mask = pcv.threshold.binary(gray_img=blue_yellow, threshold=130, object_type="dark")
-
-    edge_map = pcv.laplace_filter(gray_img=value, ksize=3, scale=1)
-    edge_map = cv2.convertScaleAbs(edge_map)
-    edge_map = pcv.gaussian_blur(img=edge_map, ksize=(3, 3), sigma_x=0, sigma_y=None)
-    edge_mask = pcv.threshold.binary(gray_img=edge_map, threshold=35, object_type="light")
-    edge_mask = pcv.dilate(gray_img=edge_mask, ksize=3, i=1)
-
-    structure_mask = cv2.bitwise_or(green_structure, lesion_mask)
-    structure_mask = cv2.bitwise_or(structure_mask, edge_mask)
-    structure_mask = cv2.bitwise_and(structure_mask, leaf_mask)
-    structure_mask = cv2.morphologyEx(structure_mask, cv2.MORPH_OPEN, np.ones((3, 3), dtype=np.uint8))
-
-    return structure_mask
+        # 4. Create the "Rugosity" feature
+        # A value of 1.0 means a perfectly smooth oval. 
+        # A value of 0.7 means a jagged/decaying leaf edge.
+        rugosity = convex_hull_perimeter / perimeter
+        hull_ratio = perimeter / convex_hull_area
+    
+    leaf_features["relative_perimeter"] = relative_perimeter
+    leaf_features["solidity"] = solidity
+    #leaf_features["perimeter"] = perimeter
+    leaf_features["ellipse_eccentricity"] = ellipse_eccentricity
+    leaf_features["mean_greenness_a"] = mean_greenness_a
+    leaf_features["std_greenness_a"] = std_greenness_a
+    leaf_features["relative_width"] = relative_width
+    leaf_features["longest_path"] = longest_path
+    leaf_features["circularity"] = circularity
+    #leaf_features["convexity"] = convexity
+    leaf_features["extent"] = extent
+    leaf_features["rugosity"] = rugosity
+    leaf_features["hull_ratio"] = hull_ratio
+    return shape_img
 
 
-def render_mask_transform(
-    img: np.ndarray, leaf_mask: np.ndarray, structure_mask: np.ndarray
-) -> np.ndarray:
-    """Render a white background result that preserves only masked leaf details."""
-    result = np.full_like(img, 255)
-    result[structure_mask > 0] = img[structure_mask > 0]
+def roi(img: np.ndarray, leaf_features: dict):
+    """
+    Get HSV from BGR
+    Extract saturation (s) channel
+    Define green range
+    Get healthy mask from green range
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small holes
+    Remove salt-pepper noise
+    Get final healthy mask from matching threshold mask
+    Overlay final healthy mask to the img
+    Draw blue rectangle
+    """
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    s = hsv[:, :, 1]
+    
+    lower_green = (25, 25, 30)
+    upper_green = (95, 255, 255)
 
-    contours, _ = cv2.findContours(leaf_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        cv2.drawContours(result, contours, -1, (0, 0, 0), thickness=2)
+    healthy_mask = cv2.inRange(hsv, lower_green, upper_green)
 
-    return result
+    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+    #mask = pcv.fill_holes(mask)            
+    mask = pcv.fill(mask, size=50)         
+    mask = pcv.median_blur(mask, ksize=3)
+    
+    # Only keep Green pixels that are actually INSIDE the leaf
+    final_healthy_mask = cv2.bitwise_and(healthy_mask, mask)
 
+    overlay = img.copy()
+    overlay[final_healthy_mask > 0] = (0, 255, 0)  # green BGR
 
-def transformation(filepath: Path, dirpath: Path) -> None:
-    """Build and save PlantCV-driven mask outputs for one plant image."""
-    img = cv2.imread(str(filepath))
-    if img is None:
-        raise ValueError(f"unable to read image: {filepath}")
+    h, w = overlay.shape[:2]
 
-    filename = filepath.stem
-    leaf_mask = build_leaf_mask(img)
-    structure_mask = build_structure_mask(img, leaf_mask)
-    transformed = render_mask_transform(img, leaf_mask, structure_mask)
-
-    cv2.imwrite(str(dirpath / f"{filename}{LEAF_MASK_SUFFIX}"), leaf_mask)
-    cv2.imwrite(str(dirpath / f"{filename}{STRUCTURE_MASK_SUFFIX}"), structure_mask)
-    cv2.imwrite(str(dirpath / f"{filename}{TRANSFORM_SUFFIX}"), transformed)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate PlantCV leaf masks and a mask-style transformed image."
+    cv2.rectangle(
+        overlay,
+        (0, 0),        # top-left corner
+        (w-1, h-1),    # bottom-right corner
+        (255, 0, 0),   # blue (BGR)
+        3              # thickness
     )
-    parser.add_argument("-src", required=True, help="source image path")
-    parser.add_argument("-dst", required=True, help="destination directory")
 
-    args = parser.parse_args()
+    # Extract features
 
-    filepath = Path(args.src)
-    dirpath = Path(args.dst)
+    total_area = np.count_nonzero(mask)
+    healthy_area = np.count_nonzero(final_healthy_mask)
 
-    is_path_dir(dirpath)
-    is_image_file(filepath)
-    transformation(filepath, dirpath)
+    # Calculate Features
+    healthy_ratio = healthy_area / total_area if total_area > 0 else 0
+    disease_area = total_area - healthy_area
+    disease_ratio = disease_area / total_area if total_area > 0 else 0
+    
+    # Count individual spots
+    num_spots, _ = cv2.connectedComponents(cv2.subtract(mask, final_healthy_mask))
+    spot_density = num_spots / total_area
+
+    lesion_size = disease_area / num_spots
+    #infection_pressure: num_spots / perimeter
+
+    leaf_features["healthy_ratio"] = healthy_ratio
+    #leaf_features["disease_area"] = disease_area
+    #leaf_features["disease_ratio"] = disease_ratio
+    leaf_features["spot_density"] = spot_density
+    leaf_features["lesion_size"] = lesion_size
+
+    return overlay
+
+
+def mask(img: np.ndarray, leaf_features: dict):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small holes
+    Remove salt-pepper noise
+    Apply mask to image
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+
+    #mask = pcv.fill_holes(mask)            # removes "holes" from inside the leaf (black spots on white).
+    mask = pcv.fill(mask, size=50)         # removes "trash" from the background (white specks on black).
+    mask = pcv.median_blur(mask, ksize=3)
+    
+    masked = pcv.apply_mask(
+        img=img,
+        mask=mask,
+        mask_color='white'
+    )
+
+    # Extract features
+    #leaf_features["mask"] = "mask"
+    return masked
+
+
+def gaussian_blur(img: np.ndarray, leaf_features: dict):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+
+    threshold_img = pcv.threshold.otsu(blur, object_type='light')
+
+    # Extract features
+    #leaf_features["gaussian_blur"] = "gaussian_blur"
+    return threshold_img
+
+
+def original(img: np.ndarray, leaf_features: dict):
+    """
+    return original image
+    """
+    # Extract features
+    #leaf_features["original"] = "original"
+    return img
+
+
+def transformation(filepath: Path)-> None:
+    """
+    Various transformation to a single image
+    Extract features from various transformations
+    """
+    img = cv2.imread(str(filepath))
+    leaf_features = {}
+
+    transformations = {
+        "original": original(img.copy(), leaf_features),
+        "gaussian_blur": gaussian_blur(img.copy(), leaf_features),
+        "mask": mask(img.copy(), leaf_features),
+        "roi": roi(img.copy(), leaf_features),
+        "analyze": analyze(img.copy(), leaf_features),
+        "pseudolandmarks": pseudolandmarks(img.copy(), leaf_features)
+    }
+
+    print(leaf_features)
+
+    return transformations, leaf_features
+
+
+def  transform_dir(src_path: Path, dest_path: Path)-> None:
+    """
+    Loop the src directory
+    Transform every image in the src directory
+    Save to dst directory
+    """
+    for file_path in src_path.glob("*.JPG"):
+        filename = file_path.stem
+        transformed, _ = transformation(file_path)
+        for trn_name, trn_img in transformed.items():
+            save_path = dest_path / f"{filename}_{trn_name}.JPG"
+            cv2.imwrite(str(save_path), trn_img)
+            
+
+def main():
+    """main()"""
+
+    try:
+ 
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument("-src", required=True)
+        parser.add_argument("-dst", required=False)
+        
+        args = parser.parse_args()
+        filepath = Path(args.src)
+        
+        dirpath = None
+        if args.dst:
+            dirpath = Path(args.dst)
+
+        if dirpath:                                 # dir src, dir dst
+            is_path_dir(dirpath)
+            is_path_dir(filepath)
+            transform_dir(filepath, dirpath)
+        else:                                       # single image file src
+            is_image_file(filepath)
+            transformed, _ = transformation(filepath)
+            for _, trn_img in transformed.items():
+                pcv.plot_image(trn_img)
+                #plot_leaf_color_histogram(trn_img)
+            
+    except Exception as e:
+        print(f"Error: {str(e)}")
 
 
 if __name__ == "__main__":
