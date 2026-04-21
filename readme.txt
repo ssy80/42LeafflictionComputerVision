@@ -39,6 +39,7 @@ Training
     python3 ./train.py ./images/Grape ./images/transformed/Grape
 
     Small testing set training and evaluation (400)
+    Copy 100 images from each class in the original leaves.zip to ./images/test/Apple and ./images/test/Grape
     python3 ./train.py ./images/test/Apple ./images/transformed/test/Apple
     python3 ./train.py ./images/test/Grape ./images/transformed/test/Grape
 
