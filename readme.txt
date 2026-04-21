@@ -4,6 +4,11 @@ Setup
 Activate virtual env 
     source my_env/bin/activate
 
+Download leaves.zip from intra.
+Create ./images/Apple directory
+Create ./images/Grape directory
+Move the respective class images to the above created directories from the unzipped leaves.zip
+
 View Distribution
     python3 ./Distribution.py ./images/Apple/
     python3 ./Distribution.py ./images/Grape/
@@ -45,5 +50,3 @@ Predict - python3 ./predict.py [test image src] [trained model location]
     
     python3 ./predict.py "./test/Grape/image (1).JPG" ./images/transformed/Grape/splited
     python3 ./predict.py "./test/Grape/image (10).JPG" ./images/transformed/Grape/splited
-
-
