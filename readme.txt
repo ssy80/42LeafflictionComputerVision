@@ -29,19 +29,21 @@ Transformations
         python3 ./Transformation.py -src "./images/Grape/Grape_spot" -dst ./images/Transformations/Grape/Grape_spot
 
 Training
+    Full Training
     python3 ./train.py ./images/Apple ./images/transformed/Apple
     python3 ./train.py ./images/Grape ./images/transformed/Grape
 
-Predict - python3 ./predict.py [test image src] [trained model location] [original image location]
+    Small testing set training and evaluation (400)
+    python3 ./train.py ./images/test/Apple ./images/transformed/test/Apple
+    python3 ./train.py ./images/test/Grape ./images/transformed/test/Grape
+
+
+Predict - python3 ./predict.py [test image src] [trained model location]
      
-    python3 ./predict.py "./test/Apple/image (1)_Contrast_analyze.JPG" ./images/transformed/Apple/splited ./images/Apple
-    python3 ./predict.py "./test/Apple/image (1).JPG" ./images/transformed/Apple/splited ./images/Apple
-    python3 ./predict.py "./test/Apple/image (2)_Skew.JPG" ./images/transformed/Apple/splited ./images/Apple
-    python3 ./predict.py "./test/Apple/image (4)_Distortion.JPG" ./images/transformed/Apple/splited ./images/Apple
-    python3 ./predict.py "./test/Apple/image (29).JPG" ./images/transformed/Apple/splited ./images/Apple
+    python3 ./predict.py "./test/Apple/image (1).JPG" ./images/transformed/Apple/splited
+    python3 ./predict.py "./test/Apple/image (29).JPG" ./images/transformed/Apple/splited
     
-    python3 ./predict.py "./test/Grape/image (1)_Crop.JPG" ./images/transformed/Grape/splited ./images/Grape
-    python3 ./predict.py "./test/Grape/image (1)_mask.JPG" ./images/transformed/Grape/splited ./images/Grape
-    python3 ./predict.py "./test/Grape/image (2)_Rotate.JPG" ./images/transformed/Grape/splited ./images/Grape
-    python3 ./predict.py "./test/Grape/image (5)_Flip.JPG" ./images/transformed/Grape/splited ./images/Grape
-    python3 ./predict.py "./test/Grape/image (10).JPG" ./images/transformed/Grape/splited ./images/Grape
+    python3 ./predict.py "./test/Grape/image (1).JPG" ./images/transformed/Grape/splited
+    python3 ./predict.py "./test/Grape/image (10).JPG" ./images/transformed/Grape/splited
+
+

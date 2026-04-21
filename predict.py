@@ -5,6 +5,7 @@ from pathlib import Path
 from utils import is_image_file, is_path_dir
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from Transformation import transformation
 
 
 def main():
@@ -12,18 +13,18 @@ def main():
 
     try:
 
-        if len(sys.argv) != 4:
+        if len(sys.argv) != 3:
             print("Error: the arguments are bad")
             return
 
-        filepath = Path(sys.argv[1])
-        is_image_file(filepath)
+        to_predict_src = Path(sys.argv[1])
+        is_image_file(to_predict_src)
 
         model_path = Path(sys.argv[2])
         is_path_dir(model_path)
 
-        original_path = Path(sys.argv[3])
-        is_path_dir(original_path)
+        transformations = transformation(to_predict_src)
+        img_transformed = transformations["mask"]
 
         loaded_model = tf.keras.models.load_model(
             model_path / "leaf_model.keras"
@@ -32,7 +33,7 @@ def main():
         df = pd.read_csv(model_path / "class_names.csv")
         class_names = df["class_name"].tolist()
 
-        img = tf.keras.utils.load_img(filepath, target_size=(256, 256))
+        img = tf.keras.utils.load_img(to_predict_src, target_size=(256, 256))
         img_array = tf.keras.utils.img_to_array(img)
 
         # add batch dimension so shape becomes (1, 256, 256, 3)
@@ -46,25 +47,16 @@ def main():
         print("Predicted class index:", predicted_class)
         print("Predicted class label:", class_names[predicted_class])
 
-        predict_image_name = filepath.stem
-        splited_base_image_name = predict_image_name.split("_")[0]
-        original_image_path = original_path /\
-            predicted_class_label / f"{splited_base_image_name}.JPG"
-
-        img_original = tf.keras.utils.load_img(
-            original_image_path, target_size=(256, 256)
-            )
-
         fig = plt.figure(figsize=(8, 5))
 
         plt.subplot(1, 2, 1)
-        plt.imshow(img_original)
+        plt.imshow(img)
         plt.title("Original")
         plt.axis("off")
 
         plt.subplot(1, 2, 2)
-        plt.imshow(img)
-        plt.title("Predict")
+        plt.imshow(img_transformed)
+        plt.title("Transformed")
         plt.axis("off")
 
         fig.text(
