@@ -1,21 +1,8 @@
 import cv2
 import sys
-import os
 import numpy as np
 from pathlib import Path
 from utils import is_image_file
- 
-
-'''def is_image_file(filepath: Path)-> None:
-    """
-    Check filepath is an image file (.jpg, .jpeg) 
-    """
-    if not filepath.is_file():
-        raise FileNotFoundError(f"file not found: {filepath}")
-
-    if filepath.suffix.lower() not in (".jpg", ".jpeg"):
-        raise ValueError("file must be a .jpg or .jpeg image")
-'''
 
 
 def flip(img: np.ndarray):
@@ -28,11 +15,24 @@ def flip(img: np.ndarray):
 def rotate(img: np.ndarray):
     """
     Rotate to right 25 degree angle.
-    cv2.getRotationMatrix2D(center, angle, scale)
     """
+    angle = -25
     h, w = img.shape[:2]
-    M = cv2.getRotationMatrix2D((w/2, h/2), -25, 1)
-    return cv2.warpAffine(img, M, (w, h))
+    center = (w / 2, h / 2)
+
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    cos = abs(M[0, 0])
+    sin = abs(M[0, 1])
+
+    new_w = int((h * sin) + (w * cos))
+    new_h = int((h * cos) + (w * sin))
+
+    M[0, 2] += (new_w / 2) - center[0]
+    M[1, 2] += (new_h / 2) - center[1]
+
+    rotated = cv2.warpAffine(img, M, (new_w, new_h))
+    return rotated
 
 
 def skew(img: np.ndarray):
@@ -81,10 +81,7 @@ def  augmentation(filepath: Path)-> None:
     and save to the same directory.
     """
     current_dir = filepath.parent
-    #print(current_dir)
-
     filename = filepath.stem
-    #print(filename)
 
     img = cv2.imread(str(filepath))
     
@@ -112,7 +109,6 @@ def main():
             return
 
         filepath = Path(sys.argv[1])
-        #print(filepath)
 
         is_image_file(filepath)
         augmentation(filepath)

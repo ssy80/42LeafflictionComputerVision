@@ -30,5 +30,3 @@ for i in {1..51}
 do
     python3 ./Augmentation.py "./images/Grape/Grape_spot/image ($i).JPG"
 done
-
-

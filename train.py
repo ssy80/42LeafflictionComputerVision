@@ -1,63 +1,93 @@
 import sys
-#import os
-import numpy as np
 from pathlib import Path
-from utils import is_image_file, is_path_dir
-from Transformation import transformation
+import tensorflow as tf
+from utils import is_path_dir
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score
-from sklearn.model_selection import cross_val_score
-import joblib
+from split_file import split_dataset
+from Transformation import transform_dir
 
-def train(df: pd.DataFrame):
+
+def train_tf(source_dir: Path):
     """
+    Train a TensorFlow model on the dataset.
     """
-    y = df["label"]
-    X = df.drop(columns=["image", "label"])#, "disease_area", "longest_path"])
+    output_dir = source_dir / "splited"
+    split_dataset(source_dir, output_dir)
+
+    train_set = output_dir / "train"
+    val_set = output_dir / "val"
+
+    image_size = (256, 256)
+    batch_size = 32
+
+    train_ds = tf.keras.preprocessing.image_dataset_from_directory(
+        train_set,
+        image_size=image_size,
+        batch_size=batch_size,
+    )
+
+    val_ds = tf.keras.utils.image_dataset_from_directory(
+        val_set,
+        image_size=image_size,
+        batch_size=batch_size
+    )
+
+    model = tf.keras.Sequential([
+
+        tf.keras.layers.Rescaling(1./255, input_shape=(256, 256, 3)),
+
+        # Detect Features 32 learned detectors
+        tf.keras.layers.Conv2D(32, (3, 3), activation="relu"),
+        # Reduce Size & Keep Strong Features
+        tf.keras.layers.MaxPooling2D(),
+
+        # combines them into more detailed patterns
+        tf.keras.layers.Conv2D(64, (3, 3), activation="relu"),
+        tf.keras.layers.MaxPooling2D(),
+
+        # combines them into more detailed patterns
+        tf.keras.layers.Conv2D(128, (3, 3), activation="relu"),
+        tf.keras.layers.MaxPooling2D(),
+
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(128, activation="relu"),
+        tf.keras.layers.Dense(len(train_ds.class_names), activation="softmax")
+    ])
+
+    model.compile(
+        optimizer="adam",
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"]
+    )
     
-    le = LabelEncoder()
-    y = le.fit_transform(y)
+    model.fit(
+        train_ds,
+        validation_data=val_ds,
+        epochs=10
+    )
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    _, accuracy = model.evaluate(val_ds)
+    print("Validation accuracy:", accuracy)
 
-    rf = RandomForestClassifier(n_estimators=200, random_state=42)
-    rf.fit(X_train, y_train)
+    class_names = train_ds.class_names
+    df = pd.DataFrame(class_names, columns=["class_name"])
+    class_names_path = output_dir / "class_names.csv"
+    df.to_csv(class_names_path, index=False)
 
-    joblib.dump(rf, 'rf_leaf_classifier.pkl')
-    joblib.dump(le, 'le.pkl')
-
-    scores = cross_val_score(rf, X, y, cv=5)
-    print(f"Mean Accuracy: {scores.mean():.2%}")
-
-    y_pred = rf.predict(X_test)
-
-    print(f"Accuracy: {accuracy_score(y_test, y_pred):.2%}")
+    model_path = output_dir / "leaf_model.keras"
+    model.save(model_path)
+    print("Model saved to:", model_path)
 
 
-def get_dataset(dirpath: str):
+def transformation_dir(src_dir_path: Path, dest_dir_path: Path):
     """
+    Apply transformations to all images in the source directory and save them to the destination directory.
     """
-    base_path = Path(dirpath)
-    dataset = []
-
-    for subdir in base_path.iterdir():
-        if subdir.is_dir():
-            label = subdir.name
-            
-            for file_path in subdir.glob("*.JPG"): 
-                _, result_dict = transformation(file_path)
-                result_dict["image"] = file_path.name
-                result_dict["label"] = label
-
-                dataset.append(result_dict)
-    
-    df = pd.DataFrame(dataset)
-    df.to_csv("./leaf_features.csv", index=False)
-    print(df)
-    return df
+    for class_dir in src_dir_path.iterdir():
+        if class_dir.is_dir():
+            dest_class_dir = dest_dir_path / class_dir.name
+            dest_class_dir.mkdir(parents=True, exist_ok=True)
+            transform_dir(class_dir, dest_class_dir)
 
 
 def main():
@@ -65,16 +95,18 @@ def main():
 
     try:
  
-        if len(sys.argv) != 2:
+        if len(sys.argv) != 3:
             print("Error: the arguments are bad")
             return
 
-        dirpath = Path(sys.argv[1])
-        is_path_dir(dirpath)
+        to_train_dirpath = Path(sys.argv[1])
+        is_path_dir(to_train_dirpath)
 
-        #df = get_dataset(dirpath)
-        df = pd.read_csv("./leaf_features.csv")
-        train(df)
+        transformed_dirpath = Path(sys.argv[2])
+
+        transformation_dir(to_train_dirpath, transformed_dirpath)
+
+        train_tf(transformed_dirpath)
 
     except Exception as e:
         print(f"Error: {str(e)}")

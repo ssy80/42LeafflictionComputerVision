@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import sys
 from pathlib import Path
 from utils import is_path_dir
@@ -52,7 +51,7 @@ def pie_chart(df: pd.DataFrame, dir_name: str)-> None:
 
 def bar_chart(df: pd.DataFrame, dir_name: str)-> None:
     """
-    Display a bar chart with DataFrame index on x-axis and counts on y-axis.
+    Display a bar chart with class on x-axis and counts on y-axis.
     """
     plt.figure(figsize=(10, 6))
     sns.barplot(x=df.index, y=df["count"], palette="viridis", hue=df.index, legend=False)
@@ -87,7 +86,6 @@ def main():
         
         pie_chart(df, dir_name)
         bar_chart(df, dir_name)
-
 
     except Exception as e:
         print(f"Error: {str(e)}")
