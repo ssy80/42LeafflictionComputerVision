@@ -1,0 +1,325 @@
+import cv2
+import os
+import numpy as np
+from pathlib import Path
+import argparse
+from utils import is_path_dir, is_image_file
+from plantcv import plantcv as pcv
+import matplotlib.pyplot as plt
+
+
+def plot_leaf_color_histogram(img, mask=None):
+    """
+    Plot normalized histograms of multiple color channels from a leaf image.
+    This function optionally applies a binary mask to keep only
+    selected pixels, converts the image into RGB, HSV, and LAB
+    color spaces, extracts the channel values from the selected region,
+    and plots each channel histogram as the percentage of valid pixels
+    at each intensity level.
+    """
+    # convert to ensure 3-channel image
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+    if mask is None:
+        # 2d mask of 255 values (white)
+        mask = np.full(img.shape[:2], 255, dtype="uint8")
+
+    # Keep only masked pixels
+    valid = mask > 0
+
+    # Convert color spaces
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+
+    # Extract channels inside mask
+    red = rgb[:, :, 0][valid]
+    green = rgb[:, :, 1][valid]
+    blue = rgb[:, :, 2][valid]
+
+    hue = hsv[:, :, 0][valid]
+    saturation = hsv[:, :, 1][valid]
+    value = hsv[:, :, 2][valid]
+
+    lightness = lab[:, :, 0][valid]
+    green_magenta = lab[:, :, 1][valid]
+    blue_yellow = lab[:, :, 2][valid]
+
+    channels = {
+        "blue": blue,
+        "blue-yellow": blue_yellow,
+        "green": green,
+        "green-magenta": green_magenta,
+        "hue": hue,
+        "lightness": lightness,
+        "red": red,
+        "saturation": saturation,
+        "value": value,
+    }
+
+    colors = {
+        "blue": "blue",
+        "blue-yellow": "yellow",
+        "green": "green",
+        "green-magenta": "magenta",
+        "hue": "#7d3cff",
+        "lightness": "gray",
+        "red": "red",
+        "saturation": "cyan",
+        "value": "orange",
+    }
+
+    plt.figure(figsize=(11, 6))
+
+    total_pixels = np.count_nonzero(valid)
+
+    for name, vals in channels.items():
+        hist, bins = np.histogram(vals, bins=256, range=(0, 256))
+        hist_percent = (hist / total_pixels) * 100
+        plt.plot(
+            bins[:-1],
+            hist_percent,
+            label=name,
+            color=colors[name],
+            linewidth=1.5
+            )
+
+    plt.xlabel("Pixel intensity", fontsize=16)
+    plt.ylabel("Proportion of pixels (%)", fontsize=16)
+    plt.xlim(0, 255)
+    plt.legend(
+        title="color Channel",
+        bbox_to_anchor=(1.03, 0.5),
+        loc="center left"
+        )
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+
+def pseudolandmarks(img: np.ndarray):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small objects
+    Remove salt-pepper noise
+    Use pseudolandmarks y-axis and draw landmarks on image
+    Return the image created
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+    mask = pcv.fill(mask, size=50)
+    mask = pcv.median_blur(mask, ksize=3)
+
+    top_x, bottom_x, center_v = pcv.homology.y_axis_pseudolandmarks(
+        img=img, mask=mask
+    )
+
+    result = img.copy()
+    for group, color in [(top_x, (255, 0, 0)), (bottom_x, (0, 255, 0)), (center_v, (0, 0, 255))]:
+        for point in group:
+            x, y = int(point[0][0]), int(point[0][1])
+            cv2.circle(result, (x, y), 5, color, -1)
+
+    return result
+
+
+def analyze(img: np.ndarray):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small objects
+    Remove salt-pepper noise
+    use plantcv analyze
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+    # mask = pcv.fill_holes(mask)
+    mask = pcv.fill(mask, size=50)
+    mask = pcv.median_blur(mask, ksize=3)
+
+    pcv.params.text_size = 0
+    pcv.outputs.clear()
+
+    analyze_img = pcv.analyze.size(
+        img=img,
+        labeled_mask=mask,
+        n_labels=1,
+        label="leaf_data"
+        )
+
+    return analyze_img
+
+
+def roi(img: np.ndarray):
+    """
+    Get HSV from BGR
+    Extract saturation (s) channel
+    Define green range
+    Get healthy mask from green range
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small objects
+    Remove salt-pepper noise
+    Get final healthy mask from matching threshold mask
+    Overlay final healthy mask to the img
+    Draw blue rectangle
+    """
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    s = hsv[:, :, 1]
+
+    lower_green = (25, 25, 30)
+    upper_green = (95, 255, 255)
+
+    healthy_mask = cv2.inRange(hsv, lower_green, upper_green)
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+    # mask = pcv.fill_holes(mask)
+    mask = pcv.fill(mask, size=50)
+    mask = pcv.median_blur(mask, ksize=3)
+
+    # Only keep Green pixels that are actually INSIDE the leaf
+    final_healthy_mask = cv2.bitwise_and(healthy_mask, mask)
+
+    overlay = img.copy()
+    overlay[final_healthy_mask > 0] = (0, 255, 0)
+
+    h, w = overlay.shape[:2]
+
+    # Draw a blue rectangle around the entire image
+    cv2.rectangle(
+        overlay,
+        (0, 0),
+        (w-1, h-1),
+        (255, 0, 0),
+        3
+    )
+
+    return overlay
+
+
+def mask(img: np.ndarray):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    Remove small objects
+    Remove salt-pepper noise
+    Apply mask to image
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
+    mask = pcv.threshold.otsu(blur, object_type='light')
+
+    # mask = pcv.fill_holes(mask)
+    mask = pcv.fill(mask, size=50)
+    mask = pcv.median_blur(mask, ksize=3)
+
+    masked_img = pcv.apply_mask(
+        img=img,
+        mask=mask,
+        mask_color='white'
+    )
+
+    return masked_img
+
+
+def gaussian_blur(img: np.ndarray):
+    """
+    Extract saturation (s) channel
+    Gaussian blur the image
+    Threshold saturation using otsu - auto threshold
+    """
+    s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
+
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
+
+    blur_img = pcv.threshold.otsu(blur, object_type='light')
+
+    return blur_img
+
+
+def original(img: np.ndarray):
+    """
+    return original image
+    """
+    return img
+
+
+def transformation(filepath: Path) -> None:
+    """
+    Various transformation to a single image
+    Extract features from various transformations
+    """
+    img = cv2.imread(str(filepath))
+
+    transformations = {
+        "original": original(img.copy()),
+        "gaussian_blur": gaussian_blur(img.copy()),
+        "mask": mask(img.copy()),
+        "roi": roi(img.copy()),
+        "analyze": analyze(img.copy()),
+        "pseudolandmarks": pseudolandmarks(img.copy())
+    }
+
+    return transformations
+
+
+def transform_dir(src_path: Path, dest_path: Path) -> None:
+    """
+    Loop the src directory
+    Transform every image in the src directory
+    Save to dst directory
+    """
+    dest_path.mkdir(parents=True, exist_ok=True)
+
+    for file_path in src_path.glob("*.JPG"):
+        filename = file_path.stem
+        transformed = transformation(file_path)
+        for trn_name, trn_img in transformed.items():
+            save_path = dest_path / f"{filename}_{trn_name}.JPG"
+            cv2.imwrite(str(save_path), trn_img)
+
+
+def main():
+    """main()"""
+
+    try:
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-src", required=True)
+        parser.add_argument("-dst", required=False)
+
+        args = parser.parse_args()
+        src_path = Path(args.src)
+
+        dest_path = None
+        if args.dst:
+            dest_path = Path(args.dst)
+
+        if dest_path:
+            is_path_dir(src_path)
+            transform_dir(src_path, dest_path)
+        else:
+            is_image_file(src_path)
+            transformed = transformation(src_path)
+            for _, trn_img in transformed.items():
+                pcv.plot_image(trn_img)
+                plot_leaf_color_histogram(trn_img)
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+
+if __name__ == "__main__":
+    main()

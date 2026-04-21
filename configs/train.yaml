@@ -1,0 +1,11 @@
+image_size: [256, 256] #School use [128,128]
+batch_size: 16 #School use 8
+autotune: true #School use false
+epochs: 10
+
+early_stopping:
+  monitor: val_accuracy
+  patience: 3
+  restore_best_weights: true
+
+logs_dir: logs/training

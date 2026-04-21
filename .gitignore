@@ -1,2 +1,11 @@
 __pycache__
 my_env
+models/
+logs/
+dataset/augmented/
+dataset/raw/**/*.JPG
+dataset/test/**/*.JPG
+distribution/
+.pytest_cache/
+*.pyc
+*.png
