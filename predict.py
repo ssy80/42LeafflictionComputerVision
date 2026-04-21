@@ -25,7 +25,9 @@ def main():
         original_path = Path(sys.argv[3])
         is_path_dir(original_path)
 
-        loaded_model = tf.keras.models.load_model(model_path / "leaf_model.keras")
+        loaded_model = tf.keras.models.load_model(
+            model_path / "leaf_model.keras"
+            )
 
         df = pd.read_csv(model_path / "class_names.csv")
         class_names = df["class_name"].tolist()
@@ -46,9 +48,12 @@ def main():
 
         predict_image_name = filepath.stem
         splited_base_image_name = predict_image_name.split("_")[0]
-        original_image_path = original_path / predicted_class_label/ f"{splited_base_image_name}.JPG"
+        original_image_path = original_path /\
+            predicted_class_label / f"{splited_base_image_name}.JPG"
 
-        img_original = tf.keras.utils.load_img(original_image_path, target_size=(256, 256))
+        img_original = tf.keras.utils.load_img(
+            original_image_path, target_size=(256, 256)
+            )
 
         fig = plt.figure(figsize=(8, 5))
 

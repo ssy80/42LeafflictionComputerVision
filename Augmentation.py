@@ -40,10 +40,10 @@ def skew(img: np.ndarray):
     Skew image
     """
     h, w = img.shape[:2]
-    pts1 = np.float32([[0,0],[w,0],[0,h]])
-    pts2 = np.float32([[0,0],[w,0],[int(0.2*w),h]])
-    M = cv2.getAffineTransform(pts1,pts2)
-    return cv2.warpAffine(img,M,(w,h))
+    pts1 = np.float32([[0, 0], [w, 0], [0, h]])
+    pts2 = np.float32([[0, 0], [w, 0], [int(0.2*w), h]])
+    M = cv2.getAffineTransform(pts1, pts2)
+    return cv2.warpAffine(img, M, (w, h))
 
 
 def crop(img: np.ndarray):
@@ -62,7 +62,7 @@ def distortion(img: np.ndarray):
     """
     Blur the image
     """
-    return cv2.GaussianBlur(img,(7,7),0)
+    return cv2.GaussianBlur(img, (7, 7), 0)
 
 
 def contrast(img: np.ndarray):
@@ -75,7 +75,7 @@ def contrast(img: np.ndarray):
     return cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
 
 
-def  augmentation(filepath: Path)-> None:
+def augmentation(filepath: Path) -> None:
     """
     Perform six different augmentation on the image filepath
     and save to the same directory.
@@ -84,7 +84,7 @@ def  augmentation(filepath: Path)-> None:
     filename = filepath.stem
 
     img = cv2.imread(str(filepath))
-    
+
     augments = {
         "Flip": flip(img),
         "Rotate": rotate(img),
@@ -103,7 +103,7 @@ def main():
     """main()"""
 
     try:
- 
+
         if len(sys.argv) != 2:
             print("Error: the arguments are bad")
             return

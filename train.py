@@ -59,7 +59,7 @@ def train_tf(source_dir: Path):
         loss="sparse_categorical_crossentropy",
         metrics=["accuracy"]
     )
-    
+
     model.fit(
         train_ds,
         validation_data=val_ds,
@@ -81,7 +81,8 @@ def train_tf(source_dir: Path):
 
 def transformation_dir(src_dir_path: Path, dest_dir_path: Path):
     """
-    Apply transformations to all images in the source directory and save them to the destination directory.
+    Apply transformations to all images in the source directory
+    and save them to the destination directory.
     """
     for class_dir in src_dir_path.iterdir():
         if class_dir.is_dir():
@@ -94,7 +95,7 @@ def main():
     """main()"""
 
     try:
- 
+
         if len(sys.argv) != 3:
             print("Error: the arguments are bad")
             return

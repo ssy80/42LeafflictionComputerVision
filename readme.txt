@@ -32,7 +32,8 @@ Training
     python3 ./train.py ./images/Apple ./images/transformed/Apple
     python3 ./train.py ./images/Grape ./images/transformed/Grape
 
-Predict
+Predict - python3 ./predict.py [test image src] [trained model location] [original image location]
+     
     python3 ./predict.py "./test/Apple/image (1)_Contrast_analyze.JPG" ./images/transformed/Apple/splited ./images/Apple
     python3 ./predict.py "./test/Apple/image (1).JPG" ./images/transformed/Apple/splited ./images/Apple
     python3 ./predict.py "./test/Apple/image (2)_Skew.JPG" ./images/transformed/Apple/splited ./images/Apple

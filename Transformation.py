@@ -12,17 +12,22 @@ import shutil
 
 def plot_leaf_color_histogram(img, mask=None):
     """
-    img: BGR image from cv2.imread(...)
-    mask: binary mask, 255 = keep pixel, 0 = ignore
+    Plot normalized histograms of multiple color channels from a leaf image.
+    This function optionally applies a binary mask to keep only
+    selected pixels, converts the image into RGB, HSV, and LAB
+    color spaces, extracts the channel values from the selected region,
+    and plots each channel histogram as the percentage of valid pixels
+    at each intensity level.
     """
-    # ensure 3-channel image
+    # convert to ensure 3-channel image
     if len(img.shape) == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     elif img.shape[2] == 4:
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
     if mask is None:
-        mask = np.full(img.shape[:2], 255, dtype="uint8") # 2d mask of 255 values (white)
+        # 2d mask of 255 values (white)
+        mask = np.full(img.shape[:2], 255, dtype="uint8")
 
     # Keep only masked pixels
     valid = mask > 0
@@ -76,12 +81,22 @@ def plot_leaf_color_histogram(img, mask=None):
     for name, vals in channels.items():
         hist, bins = np.histogram(vals, bins=256, range=(0, 256))
         hist_percent = (hist / total_pixels) * 100
-        plt.plot(bins[:-1], hist_percent, label=name, color=colors[name], linewidth=1.5)
+        plt.plot(
+            bins[:-1],
+            hist_percent,
+            label=name,
+            color=colors[name],
+            linewidth=1.5
+            )
 
     plt.xlabel("Pixel intensity", fontsize=16)
     plt.ylabel("Proportion of pixels (%)", fontsize=16)
     plt.xlim(0, 255)
-    plt.legend(title="color Channel", bbox_to_anchor=(1.03, 0.5), loc="center left")
+    plt.legend(
+        title="color Channel",
+        bbox_to_anchor=(1.03, 0.5),
+        loc="center left"
+        )
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.show()
@@ -92,18 +107,18 @@ def pseudolandmarks(img: np.ndarray):
     Extract saturation (s) channel
     Gaussian blur the image
     Threshold saturation using otsu - auto threshold
-    Remove small holes
-    (removes "holes" from inside the leaf (black spots on white))
+    Remove small objects
     Remove salt-pepper noise
-    (removes "trash" from the background (white specks on black))
-    Use pseudolandmarks x-axis
+    Use pseudolandmarks y-axis
     Return the image created
     """
+    # low saturation -> dull / grayish
+    # high saturation -> rich, vivid, strong color
     s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
 
-    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
     mask = pcv.threshold.otsu(blur, object_type='light')
-    #mask = pcv.fill_holes(mask)            
+    # mask = pcv.fill_holes(mask)
     mask = pcv.fill(mask, size=50)
     mask = pcv.median_blur(mask, ksize=3)
 
@@ -133,24 +148,27 @@ def analyze(img: np.ndarray):
     Extract saturation (s) channel
     Gaussian blur the image
     Threshold saturation using otsu - auto threshold
-    Remove small holes
-    (removes "holes" from inside the leaf (black spots on white))
+    Remove small objects
     Remove salt-pepper noise
-    (removes "trash" from the background (white specks on black))
     use plantcv analyze
     """
     s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
 
-    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
     mask = pcv.threshold.otsu(blur, object_type='light')
-    #mask = pcv.fill_holes(mask)            
-    mask = pcv.fill(mask, size=50)         
+    # mask = pcv.fill_holes(mask)
+    mask = pcv.fill(mask, size=50)
     mask = pcv.median_blur(mask, ksize=3)
 
     pcv.params.text_size = 0
     pcv.outputs.clear()
 
-    analyze_img = pcv.analyze.size(img=img, labeled_mask=mask, n_labels=1, label="leaf_data")
+    analyze_img = pcv.analyze.size(
+        img=img,
+        labeled_mask=mask,
+        n_labels=1,
+        label="leaf_data"
+        )
 
     return analyze_img
 
@@ -163,10 +181,8 @@ def roi(img: np.ndarray):
     Get healthy mask from green range
     Gaussian blur the image
     Threshold saturation using otsu - auto threshold
-    Remove small holes
-    (removes "holes" from inside the leaf (black spots on white))
+    Remove small objects
     Remove salt-pepper noise
-    (removes "trash" from the background (white specks on black))
     Get final healthy mask from matching threshold mask
     Overlay final healthy mask to the img
     Draw blue rectangle
@@ -179,10 +195,10 @@ def roi(img: np.ndarray):
 
     healthy_mask = cv2.inRange(hsv, lower_green, upper_green)
 
-    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
     mask = pcv.threshold.otsu(blur, object_type='light')
-    #mask = pcv.fill_holes(mask)            
-    mask = pcv.fill(mask, size=50)         
+    # mask = pcv.fill_holes(mask)
+    mask = pcv.fill(mask, size=50)
     mask = pcv.median_blur(mask, ksize=3)
 
     # Only keep Green pixels that are actually INSIDE the leaf
@@ -210,18 +226,16 @@ def mask(img: np.ndarray):
     Extract saturation (s) channel
     Gaussian blur the image
     Threshold saturation using otsu - auto threshold
-    Remove small holes
-    (removes "holes" from inside the leaf (black spots on white))
+    Remove small objects
     Remove salt-pepper noise
-    (removes "trash" from the background (white specks on black))
     Apply mask to image
     """
     s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
 
-    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
     mask = pcv.threshold.otsu(blur, object_type='light')
 
-    #mask = pcv.fill_holes(mask)
+    # mask = pcv.fill_holes(mask)
     mask = pcv.fill(mask, size=50)
     mask = pcv.median_blur(mask, ksize=3)
 
@@ -242,7 +256,7 @@ def gaussian_blur(img: np.ndarray):
     """
     s = pcv.rgb2gray_hsv(rgb_img=img, channel='s')
 
-    blur = pcv.gaussian_blur(img=s, ksize=(5,5), sigma_x=0, sigma_y=None)
+    blur = pcv.gaussian_blur(img=s, ksize=(5, 5), sigma_x=0, sigma_y=None)
 
     blur_img = pcv.threshold.otsu(blur, object_type='light')
 
@@ -256,7 +270,7 @@ def original(img: np.ndarray):
     return img
 
 
-def transformation(filepath: Path)-> None:
+def transformation(filepath: Path) -> None:
     """
     Various transformation to a single image
     Extract features from various transformations
@@ -275,7 +289,7 @@ def transformation(filepath: Path)-> None:
     return transformations
 
 
-def  transform_dir(src_path: Path, dest_path: Path)-> None:
+def transform_dir(src_path: Path, dest_path: Path) -> None:
     """
     Loop the src directory
     Transform every image in the src directory
@@ -295,7 +309,7 @@ def main():
     """main()"""
 
     try:
- 
+
         parser = argparse.ArgumentParser()
         parser.add_argument("-src", required=True)
         parser.add_argument("-dst", required=False)

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def is_path_dir(dir_path: str)-> None:
+def is_path_dir(dir_path: str) -> None:
     """
     Check is path a valid directory
     """
@@ -14,9 +14,9 @@ def is_path_dir(dir_path: str)-> None:
         raise NotADirectoryError(f"Path is not a directory: {dir_path}")
 
 
-def is_image_file(filepath: Path)-> None:
+def is_image_file(filepath: Path) -> None:
     """
-    Check filepath is an image file (.jpg, .jpeg) 
+    Check filepath is an image file (.jpg, .jpeg)
     """
     if not filepath.is_file():
         raise FileNotFoundError(f"file not found: {filepath}")
