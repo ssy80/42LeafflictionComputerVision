@@ -1,41 +1,29 @@
 #!/bin/bash
 
-# Deactivate conda base if active so only (my_env) shows in prompt
-if type conda &>/dev/null; then
-    conda deactivate 2>/dev/null || true
-fi
-
 # Create virtual environment
 python3 -m venv my_env
+
+# Activate it
 source my_env/bin/activate
 
 # Install dependencies
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 
-# Enter into the virtual environment
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    exec "$SHELL"
-fi
-
-# If GPU is available, install CUDA libraries and patch the activate script
-if type nvidia-smi &>/dev/null && nvidia-smi &>/dev/null; then
-    echo "GPU detected — installing CUDA libraries..."
-    pip install "tensorflow[and-cuda]"
-    cat >> my_env/bin/activate << 'CUDAEOF'
-
-export LD_LIBRARY_PATH=$(python -c "
-import os, nvidia
-p = os.path.dirname(nvidia.__file__)
-libs = [os.path.join(p, d, 'lib') for d in os.listdir(p) if os.path.isdir(os.path.join(p, d, 'lib'))]
-print(':'.join(libs))
-" 2>/dev/null):${LD_LIBRARY_PATH}
-CUDAEOF
-    source my_env/bin/activate
-    echo "GPU setup complete."
+# If an NVIDIA GPU is present, patch LD_LIBRARY_PATH so TensorFlow can find
+# the CUDA libs bundled inside the venv by tensorflow[and-cuda]
+if nvidia-smi &>/dev/null; then
+    NVIDIA_LIB_PATHS=$(python3 -c "
+import glob, os
+paths = glob.glob('my_env/lib/python*/site-packages/nvidia/*/lib')
+print(':'.join(os.path.abspath(p) for p in paths))
+")
+    ACTIVATE_FILE="my_env/bin/activate"
+    if ! grep -q "nvidia" "$ACTIVATE_FILE"; then
+        echo "" >> "$ACTIVATE_FILE"
+        echo "# CUDA libs from tensorflow[and-cuda]" >> "$ACTIVATE_FILE"
+        echo "export LD_LIBRARY_PATH=\"${NVIDIA_LIB_PATHS}:\$LD_LIBRARY_PATH\"" >> "$ACTIVATE_FILE"
+        echo "GPU detected — LD_LIBRARY_PATH patched for CUDA."
+    fi
 else
-    echo "No GPU detected — using CPU only."
+    echo "No GPU detected — using CPU-only TensorFlow."
 fi
-
-# Verify environment
-echo "--- Environment Check ---"
-which python

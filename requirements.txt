@@ -5,9 +5,5 @@ numpy
 scikit-learn
 opencv-python
 plantcv
-tensorflow
-tensorboard>=2.19
-setuptools<80
-pyyaml
-pytest
+tensorflow[and-cuda]
 flake8

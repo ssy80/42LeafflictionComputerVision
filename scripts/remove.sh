@@ -1,47 +1,24 @@
 #!/bin/bash
 
-# Deactivate the virtual environment
-# Only works if executed with 'source scripts/remove.sh'
-if type deactivate &>/dev/null; then
-    deactivate
-    echo "Virtual environment deactivated."
-else
-    echo "Note: No active virtual environment found in this shell."
-fi
+# Deactivate virtual environment if active
+deactivate 2>/dev/null
 
-# Remove the virtual environment
-if [ -d "my_env" ]; then
-    rm -rf my_env
-    echo "Removed 'my_env' directory."
-fi
+# Remove virtual environment
+rm -rf my_env
 
-# Remove trained model and split dataset
-if [ -d "models/splited" ]; then
-    rm -rf models/splited
-    echo "Removed 'models/splited' directory."
-fi
+# Remove augmented_directory directory
+rm -rf augmented_directory
 
-# Remove augmented dataset
-if [ -d "dataset/augmented" ]; then
-    rm -rf dataset/augmented
-    echo "Removed 'dataset/augmented' directory."
-fi
+# Remove augmented files from Apple and Grape class directories
+for species_dir in "./Apple" "./Grape"; do
+    for class_dir in "$species_dir"/*/; do
+        [ -d "$class_dir" ] || continue
+        find "$class_dir" -maxdepth 1 -name "*.JPG" \
+            \( -name "*_Flip.JPG" -o -name "*_Rotate.JPG" -o -name "*_Skew.JPG" \
+               -o -name "*_Contrast.JPG" -o -name "*_Crop.JPG" -o -name "*_Distortion.JPG" \) \
+            -delete
+    done
+done
 
-# Remove TensorBoard logs
-if [ -d "logs" ]; then
-    rm -rf logs
-    echo "Removed 'logs' directory."
-fi
-
-# Remove pytest cache
-if [ -d ".pytest_cache" ]; then
-    rm -rf .pytest_cache
-    echo "Removed '.pytest_cache' directory."
-fi
-
-# Remove Python cache files recursively
-find . -type d -name "__pycache__" -not -path "./my_env/*" -exec rm -rf {} + 2>/dev/null
-find . -name "*.pyc" -not -path "./my_env/*" -delete 2>/dev/null
-echo "Removed __pycache__ and .pyc files."
-
-echo "Cleanup complete!"
+# Remove other generated data
+rm -rf models/ logs/ distribution/ debug/ __pycache__ .pytest_cache

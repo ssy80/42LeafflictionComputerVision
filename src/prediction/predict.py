@@ -1,3 +1,4 @@
+#!/usr/bin/env my_env/bin/python3
 import sys
 import numpy as np
 import pandas as pd
@@ -13,14 +14,28 @@ def main():
 
     try:
 
-        if len(sys.argv) != 3:
+        if len(sys.argv) not in (2, 3):
             print("Error: the arguments are bad")
             return
 
         to_predict_src = Path(sys.argv[1])
         is_image_file(to_predict_src)
 
-        model_path = Path(sys.argv[2])
+        if len(sys.argv) == 3:
+            model_path = Path(sys.argv[2])
+        else:
+            parts = to_predict_src.parts
+            model_path = None
+            for plant in ("Apple", "Grape"):
+                if plant in parts:
+                    candidate = Path("augmented_directory") / plant / "splited"
+                    if not candidate.exists():
+                        candidate = Path("models") / plant / "splited"
+                    model_path = candidate
+                    break
+            if model_path is None:
+                print("Error: cannot auto-detect model. Provide model path as second argument.")
+                return
         is_path_dir(model_path)
 
         transformations = transformation(to_predict_src)
