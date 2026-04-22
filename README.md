@@ -11,7 +11,7 @@ The pipeline covers the full ML workflow:
 * **Distribution** — visualise the class balance of a dataset as pie and bar charts.
 * **Augmentation** — expand the dataset by applying 6 transformations per image (Flip, Rotate, Skew, Contrast, Crop, Distortion), saving augmented variants alongside the original.
 * **Transformation** — apply computer vision preprocessing (Original, Gaussian blur, Mask, ROI, Analyze, Pseudolandmarks) and display a colour histogram.
-* **Training** — transform images, split 80/20, and train a CNN (TensorFlow/Keras) with GPU support. Model saved to `<output_dir>/splited/`.
+* **Training** — split 80/20 and train a CNN (TensorFlow/Keras) on the augmented dataset with GPU support. Model saved to `<output_dir>/splited/`.
 * **Prediction** — classify a single leaf image and display the original alongside its masked transformation and predicted disease label.
 
 ### Dataset Classes
@@ -79,13 +79,15 @@ source scripts/setup.sh
 source scripts/setup.sh                                       # 1. set up environment
 ./Distribution.py ./Apple                                     # 2. analyse raw dataset
 ./scripts/augmentation.sh                                     # 3. augment and balance → augmented_directory/
-./Distribution.py ./augmented_directory                         # 4. verify balance after augmentation
-./Transformation.py ./Apple/Apple_healthy/image\ \(1\).JPG   # 5. preview transformations
-./scripts/transformation.sh                                   # 6. transform → augmented_directory/Apple/ & Grape/
-./train.py ./augmented_directory/Apple                        # 7. train Apple model → Apple_learnings.zip
-./train.py ./augmented_directory/Grape                        # 8. train Grape model → Grape_learnings.zip
-./predict.py ./test/Apple/image\ \(1\).JPG                    # 9. predict (auto-detects model)
+./Distribution.py ./augmented_directory                       # 4. verify balance after augmentation
+./train.py ./augmented_directory/Apple                        # 5. train Apple model → Apple_learnings.zip
+./train.py ./augmented_directory/Grape                        # 6. train Grape model → Grape_learnings.zip
+./predict.py "./Apple/Apple_healthy/image (1).JPG"            # 7. predict (auto-detects model)
 ```
+
+> **Note — Transformation is a standalone deliverable (Part 3), not a preprocessing step for training.**
+> Run `./Transformation.py <image>` to visualise PlantCV analysis on a single leaf.
+> The CNN is trained directly on the original and augmented images.
 
 ---
 
@@ -164,7 +166,7 @@ To batch-transform all classes across Apple and Grape into `augmented_directory/
 
 ### Part 4 — Training
 
-Train a CNN on a pre-transformed labelled image directory, then package the model and images into a zip.
+Train a CNN on an augmented labelled image directory, then package the model and class names into a zip.
 
 ```bash
 ./train.py <transformed_dir>

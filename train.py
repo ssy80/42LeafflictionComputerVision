@@ -26,7 +26,7 @@ def train_tf(source_dir: Path):
     train_set = output_dir / "train"
     val_set = output_dir / "val"
 
-    image_size = (256, 256)
+    image_size = (128, 128)
     batch_size = 32
 
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -48,7 +48,11 @@ def train_tf(source_dir: Path):
 
     model = tf.keras.Sequential([
 
-        tf.keras.layers.Rescaling(1./255, input_shape=(256, 256, 3)),
+        tf.keras.layers.Rescaling(1./255, input_shape=(*image_size, 3)),
+
+        tf.keras.layers.RandomFlip("horizontal_and_vertical"),
+        tf.keras.layers.RandomRotation(0.2),
+        tf.keras.layers.RandomZoom(0.2),
 
         tf.keras.layers.Conv2D(32, (3, 3), activation="relu"),
         tf.keras.layers.MaxPooling2D(),
@@ -74,10 +78,15 @@ def train_tf(source_dir: Path):
         metrics=["accuracy"]
     )
 
+    early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor="val_accuracy", patience=5, restore_best_weights=True
+    )
+
     model.fit(
         train_ds,
         validation_data=val_ds,
-        epochs=10
+        epochs=20,
+        callbacks=[early_stop]
     )
 
     _, accuracy = model.evaluate(val_ds)

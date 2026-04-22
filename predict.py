@@ -1,3 +1,4 @@
+#!/usr/bin/env my_env/bin/python3
 import sys
 import numpy as np
 import pandas as pd
@@ -13,14 +14,14 @@ def main():
 
     try:
 
-        if len(sys.argv) != 3:
+        if len(sys.argv) != 2:
             print("Error: the arguments are bad")
             return
 
         to_predict_src = Path(sys.argv[1])
         is_image_file(to_predict_src)
 
-        model_path = Path(sys.argv[2])
+        model_path = to_predict_src.parent.parent / "splited"
         is_path_dir(model_path)
 
         transformations = transformation(to_predict_src)
@@ -33,7 +34,7 @@ def main():
         df = pd.read_csv(model_path / "class_names.csv")
         class_names = df["class_name"].tolist()
 
-        img = tf.keras.utils.load_img(to_predict_src, target_size=(256, 256))
+        img = tf.keras.utils.load_img(to_predict_src, target_size=(128, 128))
         img_array = tf.keras.utils.img_to_array(img)
 
         # add batch dimension so shape becomes (1, 256, 256, 3)
