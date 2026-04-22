@@ -1,5 +1,6 @@
 import numpy as np
-from Augmentation import flip, rotate, skew, crop, distortion, contrast, augmentation
+from augmentation.transforms import flip, rotate, skew, crop, distortion
+from augmentation.augmentation import contrast, augmentation
 
 
 def test_flip_returns_ndarray(sample_bgr_image):

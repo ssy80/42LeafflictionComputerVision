@@ -1,5 +1,6 @@
 import numpy as np
-from Transformation import original, gaussian_blur, mask, roi, transformation, transform_dir
+from transformation.filters import gaussian_blur, mask, roi
+from transformation.transformation import original, transformation, transform_dir
 
 
 def test_original_returns_same(sample_bgr_image):

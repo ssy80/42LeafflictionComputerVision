@@ -1,4 +1,4 @@
-from split_file import split_dataset
+from split.split_file import split_dataset
 
 
 def test_split_creates_train_and_val(sample_class_dir, tmp_path):

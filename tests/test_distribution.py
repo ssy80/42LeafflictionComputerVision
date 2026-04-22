@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from Distribution import count_images, list_dirs
+from distribution.distribution import count_images, list_dirs
 
 
 def test_count_images_correct(sample_image_dir):

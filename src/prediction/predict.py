@@ -2,10 +2,10 @@ import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from utils import is_image_file, is_path_dir
+from utils.utils import is_image_file, is_path_dir
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from Transformation import transformation
+from transformation.transformation import transformation
 
 
 def main():
@@ -36,7 +36,6 @@ def main():
         img = tf.keras.utils.load_img(to_predict_src, target_size=(256, 256))
         img_array = tf.keras.utils.img_to_array(img)
 
-        # add batch dimension so shape becomes (1, 256, 256, 3)
         img_array = np.expand_dims(img_array, axis=0)
 
         pred = loaded_model.predict(img_array)

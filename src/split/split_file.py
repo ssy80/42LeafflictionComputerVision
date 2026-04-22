@@ -19,7 +19,6 @@ def split_dataset(source_dir: Path, output_dir: Path):
                     all_files.append(file)
                     all_labels.append(class_dir.name)
 
-    # Split: 80% train, 20% val
     train_files, val_files, train_labels, val_labels = train_test_split(
         all_files,
         all_labels,

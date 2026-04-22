@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from utils import is_path_dir, is_image_file
+from utils.utils import is_path_dir, is_image_file
 
 
 def test_is_path_dir_valid(tmp_path):

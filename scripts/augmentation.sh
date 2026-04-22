@@ -9,6 +9,6 @@ for species_dir in "$SRC"/*/; do
         [ -d "$class_dir" ] || continue
         class=$(basename "$class_dir")
         dst_dir="$DST/$species/$class"
-        python3 ./src/Augmentation.py "$class_dir" "$dst_dir"
+        PYTHONPATH=./src python3 -m augmentation.augmentation "$class_dir" "$dst_dir"
     done
 done
