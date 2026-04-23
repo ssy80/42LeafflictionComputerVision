@@ -34,5 +34,8 @@ for species_dir in "./test/Apple" "./test/Grape"; do
 done
 rm -f ./test/Apple_learnings.zip ./test/Grape_learnings.zip
 
+# Remove test_augmented directory
+rm -rf test_augmented
+
 # Remove other generated data
 rm -rf models/ logs/ distribution/ debug/ test/ __pycache__ .pytest_cache

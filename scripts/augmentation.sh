@@ -40,15 +40,15 @@ for species_dir in "$APPLE" "$GRAPE"; do
     done
 done
 
-# Step 4: Create augmented_directory — flat directory with actual copies of all images
+# Step 4: Create augmented_directory — organised by species (Apple/ and Grape/)
 rm -rf augmented_directory
-mkdir augmented_directory
 for species_dir in "$APPLE" "$GRAPE"; do
+    species=$(basename "$species_dir")
     for class_dir in "$species_dir"/*/; do
         [ -d "$class_dir" ] || continue
         class=$(basename "$class_dir")
-        mkdir -p "augmented_directory/$class"
-        cp "$class_dir"*.JPG "augmented_directory/$class/"
+        mkdir -p "augmented_directory/$species/$class"
+        cp "$class_dir"*.JPG "augmented_directory/$species/$class/"
     done
 done
 

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-DIR="./augmented_directory"
+DIR="./test_augmented"
 
 if [ ! -d "$DIR/Apple" ] || [ ! -d "$DIR/Grape" ]; then
-    echo "Error: $DIR/Apple or $DIR/Grape not found. Run ./scripts/augmentation.sh first."
+    echo "Error: $DIR/Apple or $DIR/Grape not found. Run ./scripts/augmentation_test.sh first."
     exit 1
 fi
 

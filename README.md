@@ -82,9 +82,11 @@ source scripts/setup.sh                              # 1. set up environment
 ./Distribution.py ./Apple                            # 2. analyse raw dataset
 ./scripts/augmentation.sh                            # 3. augment + balance → augmented_directory/
 ./Distribution.py ./augmented_directory              # 4. verify class balance
-./scripts/train.sh                                   # 5. train Apple + Grape models
-./predict.py "./Apple/Apple_healthy/image (1).JPG"   # 6. predict (auto-detects model)
+./scripts/train.sh                                   # 5. mask → split → train Apple + Grape
+./predict.py "./Apple/Apple_healthy/image (1).JPG"   # 6. predict
 ```
+
+> `train.py` is self-contained: it applies the `mask` transformation to all images, splits 80/20 into train/val, then trains the CNN. `transformation.sh` is a standalone Part 3 deliverable and is not part of the training pipeline.
 
 ---
 

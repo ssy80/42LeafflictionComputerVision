@@ -3,10 +3,12 @@ import sys
 import shutil
 import zipfile
 from pathlib import Path
+import cv2
 import tensorflow as tf
 from utils import is_path_dir
 import pandas as pd
 from split_file import split_dataset
+from Transformation import mask as mask_transform
 
 
 def configure_device():
@@ -19,9 +21,33 @@ def configure_device():
         print("No GPU detected — training on CPU.")
 
 
+def apply_mask_preprocessing(source_dir: Path, masked_dir: Path) -> None:
+    if masked_dir.exists():
+        shutil.rmtree(masked_dir)
+
+    for class_dir in sorted(source_dir.iterdir()):
+        if not class_dir.is_dir() or class_dir.name in ("splited", "masked"):
+            continue
+        dest_class = masked_dir / class_dir.name
+        dest_class.mkdir(parents=True, exist_ok=True)
+        images = list(class_dir.glob("*.JPG"))
+        print(f"Masking {class_dir.name} ({len(images)} images)...")
+        for img_path in images:
+            img = cv2.imread(str(img_path))
+            if img is None:
+                continue
+            masked_img = mask_transform(img)
+            cv2.imwrite(str(dest_class / img_path.name), masked_img)
+
+    print(f"Mask preprocessing done → {masked_dir}")
+
+
 def train_tf(source_dir: Path):
+    masked_dir = source_dir / "masked"
+    apply_mask_preprocessing(source_dir, masked_dir)
+
     output_dir = source_dir / "splited"
-    split_dataset(source_dir, output_dir)
+    split_dataset(masked_dir, output_dir)
 
     train_set = output_dir / "train"
     val_set = output_dir / "val"
@@ -109,12 +135,13 @@ def train_tf(source_dir: Path):
         zf.write(model_path, arcname=f"splited/{model_path.name}")
         zf.write(class_names_path, arcname=f"splited/{class_names_path.name}")
         for class_dir in source_dir.iterdir():
-            if class_dir.is_dir() and class_dir.name != "splited":
+            if class_dir.is_dir() and class_dir.name not in ("splited", "masked"):
                 for img_file in class_dir.glob("*.JPG"):
                     zf.write(img_file,
                              arcname=f"{class_dir.name}/{img_file.name}")
     print("Learnings saved to:", zip_path)
 
+    shutil.rmtree(masked_dir, ignore_errors=True)
     shutil.rmtree(output_dir / "train", ignore_errors=True)
     shutil.rmtree(output_dir / "val", ignore_errors=True)
 
