@@ -1,14 +1,10 @@
 #!/usr/bin/env my_env/bin/python3
 import sys
-import shutil
-import zipfile
 from pathlib import Path
-import cv2
 import tensorflow as tf
 from utils import is_path_dir
 import pandas as pd
 from split_file import split_dataset
-from Transformation import mask as mask_transform
 from Transformation import transform_dir
 
 
@@ -20,28 +16,6 @@ def configure_device():
         print(f"GPU detected ({len(gpus)} device(s)) — training on GPU.")
     else:
         print("No GPU detected — training on CPU.")
-
-
-'''def apply_mask_preprocessing(source_dir: Path, masked_dir: Path) -> None:
-    if masked_dir.exists():
-        shutil.rmtree(masked_dir)
-
-    for class_dir in sorted(source_dir.iterdir()):
-        if not class_dir.is_dir() or class_dir.name in ("splited", "masked"):
-            continue
-        dest_class = masked_dir / class_dir.name
-        dest_class.mkdir(parents=True, exist_ok=True)
-        images = list(class_dir.glob("*.JPG"))
-        print(f"Masking {class_dir.name} ({len(images)} images)...")
-        for img_path in images:
-            img = cv2.imread(str(img_path))
-            if img is None:
-                continue
-            masked_img = mask_transform(img)
-            cv2.imwrite(str(dest_class / img_path.name), masked_img)
-
-    print(f"Mask preprocessing done → {masked_dir}")
-'''
 
 
 def train_tf(source_dir: Path):
@@ -116,22 +90,6 @@ def train_tf(source_dir: Path):
     model_path = output_dir / "leaf_model.keras"
     model.save(model_path)
     print("Model saved to:", model_path)
-
-    '''zip_path = source_dir.parent / f"{source_dir.name}_learnings.zip"
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write(model_path, arcname=f"splited/{model_path.name}")
-        zf.write(class_names_path, arcname=f"splited/{class_names_path.name}")
-        for class_dir in source_dir.iterdir():
-            if class_dir.is_dir() and class_dir.name not in ("splited", "masked"):
-                for img_file in class_dir.glob("*.JPG"):
-                    zf.write(img_file,
-                             arcname=f"{class_dir.name}/{img_file.name}")
-    print("Learnings saved to:", zip_path)
-
-    shutil.rmtree(masked_dir, ignore_errors=True)
-    shutil.rmtree(output_dir / "train", ignore_errors=True)
-    shutil.rmtree(output_dir / "val", ignore_errors=True)
-    '''
 
 
 def transformation_dir(src_dir_path: Path, dest_dir_path: Path):

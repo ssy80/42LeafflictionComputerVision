@@ -35,9 +35,6 @@ Leaffliction/
 │   └── lint.sh           ← run flake8 on all source files
 ├── requirements.txt
 ├── en.subject.pdf
-└── test/                 ← sample images for prediction
-    ├── Apple/
-    └── Grape/
 ```
 
 ---
@@ -86,7 +83,8 @@ source scripts/setup.sh                              # 1. set up environment
 ./predict.py "./Apple/Apple_healthy/image (1).JPG"   # 6. predict
 ```
 
-> `train.py` is self-contained: it applies the `mask` transformation to all images, splits 80/20 into train/val, then trains the CNN. `transformation.sh` is a standalone Part 3 deliverable and is not part of the training pipeline.
+> `train.py` is self-contained: it applies the transformation to all images to a transformed directory, splits 80/20 into train/val, then trains the CNN, and validation.
+ `transformation.sh` is a standalone Part 3 deliverable and is not part of the training pipeline.
 
 ---
 
@@ -103,7 +101,8 @@ Displays pie and bar charts for each class in a dataset directory.
 ```bash
 ./Distribution.py ./Apple
 ./Distribution.py ./Grape
-./Distribution.py ./augmented_directory
+./Distribution.py ./augmented_directory/Apple
+./Distribution.py ./augmented_directory/Grape
 ```
 
 ---
@@ -169,15 +168,15 @@ for d in ./augmented_directory/Grape/*/; do echo "$(find "$d" -name "*.JPG" | wc
 
 ### Part 4 — Training
 
-Trains a CNN on a labelled image directory. Splits 80/20 train/val, trains with early stopping, and saves the model plus a learnings zip.
+Trains a CNN on a labelled image directory. Transformed the images, splits 80/20 train/val, trains with early stopping, and saves the model.
 
 ```bash
-./train.py <dataset_dir>
+./train.py <dataset_dir> <transformed_dir>
 ```
 
 ```bash
-./train.py ./augmented_directory/Apple   # → augmented_directory/Apple_learnings.zip
-./train.py ./augmented_directory/Grape   # → augmented_directory/Grape_learnings.zip
+./train.py ./augmented_directory/Apple ./augmented_directory/transformed/Apple
+./train.py ./augmented_directory/Grape ./augmented_directory/transformed/Grape
 ```
 
 To train both in one go:
@@ -189,9 +188,6 @@ To train both in one go:
 **Outputs per model:**
 - `<dataset_dir>/splited/leaf_model.keras`
 - `<dataset_dir>/splited/class_names.csv`
-- `<dataset_dir>/../<name>_learnings.zip`
-
-GPU is detected automatically — no flags needed.
 
 ---
 
@@ -200,24 +196,22 @@ GPU is detected automatically — no flags needed.
 Classifies a leaf image and displays the original alongside its masked transformation with the predicted class label.
 
 ```bash
-./predict.py <image_path> [model_dir]
+./predict.py <image_path> <model_dir>
 ```
 
-The model is auto-detected from `Apple` or `Grape` in the image path. Pass `model_dir` explicitly if needed.
-
 ```bash
-./predict.py "./Apple/Apple_healthy/image (1).JPG"
-./predict.py "./test/Apple/image (1).JPG" augmented_directory/Apple/splited
+./predict.py "./Apple/Apple_healthy/image (1).JPG" ./augmented_directory/Apple/splited
+./predict.py "./test/Apple/image (1).JPG" ./augmented_directory/Apple/splited
 ```
 
 ---
 
 ## Turn-in
 
-After training, generate `signature.txt` from the learnings zip:
+After augmentation, transformation, training, zip all data files and generate a hash of the zip file and submit the hash in `signature.txt`.
 
 ```bash
-sha1sum augmented_directory/Apple_learnings.zip > signature.txt
+sha1sum learnings.zip > signature.txt
 ```
 
 Commit `signature.txt` to the repository. During evaluation, the hash will be verified against the zip — they must match exactly.

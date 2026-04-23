@@ -3,7 +3,7 @@
 APPLE="./Apple"
 GRAPE="./Grape"
 DST="./test"
-COUNT=50
+COUNT=200
 
 rm -rf "$DST"
 

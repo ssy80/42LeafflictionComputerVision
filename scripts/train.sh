@@ -8,9 +8,9 @@ if [ ! -d "$DIR/Apple" ] || [ ! -d "$DIR/Grape" ]; then
 fi
 
 echo "Training Apple model..."
-./train.py "$DIR/Apple"
+./train.py "$DIR/Apple" "$DIR/transformed/Apple"
 
 echo "Training Grape model..."
-./train.py "$DIR/Grape"
+./train.py "$DIR/Grape" "$DIR/transformed/Grape"
 
 echo "Done."

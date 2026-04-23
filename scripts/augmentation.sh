@@ -3,7 +3,7 @@
 APPLE="./Apple"
 GRAPE="./Grape"
 
-# Step 1: Augment all original images in each class (one Python call per class)
+# Augment all original images in each class (one Python call per class)
 for species_dir in "$APPLE" "$GRAPE"; do
     for class_dir in "$species_dir"/*/; do
         [ -d "$class_dir" ] || continue
@@ -12,7 +12,7 @@ for species_dir in "$APPLE" "$GRAPE"; do
     done
 done
 
-# Step 2: Find minimum class size across all 8 classes
+# Find minimum class size across all 8 classes
 min_count=$(
     for species_dir in "$APPLE" "$GRAPE"; do
         for class_dir in "$species_dir"/*/; do
@@ -23,7 +23,7 @@ min_count=$(
 )
 echo "Balancing all classes to $min_count images..."
 
-# Step 3: Trim each class down to min_count by removing excess augmented files
+# Trim each class down to min_count by removing excess augmented files
 for species_dir in "$APPLE" "$GRAPE"; do
     for class_dir in "$species_dir"/*/; do
         [ -d "$class_dir" ] || continue
@@ -40,7 +40,7 @@ for species_dir in "$APPLE" "$GRAPE"; do
     done
 done
 
-# Step 4: Create augmented_directory — organised by species (Apple/ and Grape/)
+# Create augmented_directory — organised by species (Apple/ and Grape/)
 rm -rf augmented_directory
 for species_dir in "$APPLE" "$GRAPE"; do
     species=$(basename "$species_dir")
