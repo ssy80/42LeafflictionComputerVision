@@ -43,7 +43,6 @@ def main():
         pred = loaded_model.predict(img_array)
 
         predicted_class = np.argmax(pred, axis=1)[0]
-        predicted_class_label = class_names[predicted_class]
 
         print("Predicted class index:", predicted_class)
         print("Predicted class label:", class_names[predicted_class])

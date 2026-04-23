@@ -44,7 +44,10 @@ def train_tf(source_dir: Path):
     val_count = sum(1 for _ in val_ds.unbatch())
     print(f"Validation set size: {val_count} images")
     if val_count < 100:
-        print(f"Warning: validation set has fewer than 100 images ({val_count}). Augment your dataset further.")
+        print(
+            f"Warning: validation set has fewer than 100 images "
+            f"({val_count}). Augment your dataset further."
+        )
 
     model = tf.keras.Sequential([
 
@@ -108,7 +111,8 @@ def train_tf(source_dir: Path):
         for class_dir in source_dir.iterdir():
             if class_dir.is_dir() and class_dir.name != "splited":
                 for img_file in class_dir.glob("*.JPG"):
-                    zf.write(img_file, arcname=f"{class_dir.name}/{img_file.name}")
+                    zf.write(img_file,
+                             arcname=f"{class_dir.name}/{img_file.name}")
     print("Learnings saved to:", zip_path)
 
     shutil.rmtree(output_dir / "train", ignore_errors=True)

@@ -9,6 +9,7 @@ from plantcv import plantcv as pcv
 import glob
 import matplotlib.pyplot as plt
 import shutil
+import sys as _sys
 
 
 def plot_leaf_color_histogram(img, mask=None):
@@ -322,7 +323,8 @@ def display_transformations(transformed: dict) -> None:
             ax.imshow(img, cmap="gray")
         else:
             ax.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        ax.set_xlabel(f"Figure IV.{i + 1}: {titles.get(key, key)}", fontsize=11)
+        label = f"Figure IV.{i + 1}: {titles.get(key, key)}"
+        ax.set_xlabel(label, fontsize=11)
         ax.xaxis.set_label_position("bottom")
     plt.tight_layout()
     plt.show()
@@ -332,8 +334,6 @@ def main():
     """main()"""
 
     try:
-
-        import sys as _sys
         if len(_sys.argv) > 1 and not _sys.argv[1].startswith('-'):
             src_path = Path(_sys.argv[1])
             is_image_file(src_path)
@@ -345,11 +345,14 @@ def main():
 
         parser = argparse.ArgumentParser(
             description="Apply 6 image transformations to a leaf image.",
-            usage="%(prog)s <image> | %(prog)s -src <path> [-dst <dir>] [-mask]"
+            usage="%(prog)s <image> | %(prog)s -src <path> [-dst <dir>]"
         )
-        parser.add_argument("-src", required=True, help="Source image or directory")
-        parser.add_argument("-dst", required=False, help="Destination directory (batch mode)")
-        parser.add_argument("-mask", action="store_true", help="Apply mask filter in batch mode")
+        parser.add_argument("-src", required=True,
+                            help="Source image or directory")
+        parser.add_argument("-dst", required=False,
+                            help="Destination directory (batch mode)")
+        parser.add_argument("-mask", action="store_true",
+                            help="Apply mask filter in batch mode")
 
         args = parser.parse_args()
         src_path = Path(args.src)
