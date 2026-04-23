@@ -9,6 +9,7 @@ from utils import is_path_dir
 import pandas as pd
 from split_file import split_dataset
 from Transformation import mask as mask_transform
+from Transformation import transform_dir
 
 
 def configure_device():
@@ -21,7 +22,7 @@ def configure_device():
         print("No GPU detected — training on CPU.")
 
 
-def apply_mask_preprocessing(source_dir: Path, masked_dir: Path) -> None:
+'''def apply_mask_preprocessing(source_dir: Path, masked_dir: Path) -> None:
     if masked_dir.exists():
         shutil.rmtree(masked_dir)
 
@@ -40,19 +41,17 @@ def apply_mask_preprocessing(source_dir: Path, masked_dir: Path) -> None:
             cv2.imwrite(str(dest_class / img_path.name), masked_img)
 
     print(f"Mask preprocessing done → {masked_dir}")
+'''
 
 
 def train_tf(source_dir: Path):
-    masked_dir = source_dir / "masked"
-    apply_mask_preprocessing(source_dir, masked_dir)
-
     output_dir = source_dir / "splited"
-    split_dataset(masked_dir, output_dir)
-
+    split_dataset(source_dir, output_dir)
+    
     train_set = output_dir / "train"
     val_set = output_dir / "val"
 
-    image_size = (128, 128)
+    image_size = (256, 256)
     batch_size = 32
 
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -67,21 +66,9 @@ def train_tf(source_dir: Path):
         batch_size=batch_size
     )
 
-    val_count = sum(1 for _ in val_ds.unbatch())
-    print(f"Validation set size: {val_count} images")
-    if val_count < 100:
-        print(
-            f"Warning: validation set has fewer than 100 images "
-            f"({val_count}). Augment your dataset further."
-        )
-
     model = tf.keras.Sequential([
 
         tf.keras.layers.Rescaling(1./255, input_shape=(*image_size, 3)),
-
-        tf.keras.layers.RandomFlip("horizontal_and_vertical"),
-        tf.keras.layers.RandomRotation(0.2),
-        tf.keras.layers.RandomZoom(0.2),
 
         tf.keras.layers.Conv2D(32, (3, 3), activation="relu"),
         tf.keras.layers.MaxPooling2D(),
@@ -114,7 +101,7 @@ def train_tf(source_dir: Path):
     model.fit(
         train_ds,
         validation_data=val_ds,
-        epochs=20,
+        epochs=10,
         callbacks=[early_stop]
     )
 
@@ -130,7 +117,7 @@ def train_tf(source_dir: Path):
     model.save(model_path)
     print("Model saved to:", model_path)
 
-    zip_path = source_dir.parent / f"{source_dir.name}_learnings.zip"
+    '''zip_path = source_dir.parent / f"{source_dir.name}_learnings.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.write(model_path, arcname=f"splited/{model_path.name}")
         zf.write(class_names_path, arcname=f"splited/{class_names_path.name}")
@@ -144,20 +131,36 @@ def train_tf(source_dir: Path):
     shutil.rmtree(masked_dir, ignore_errors=True)
     shutil.rmtree(output_dir / "train", ignore_errors=True)
     shutil.rmtree(output_dir / "val", ignore_errors=True)
+    '''
+
+
+def transformation_dir(src_dir_path: Path, dest_dir_path: Path):
+    """
+    Apply transformations to all images in the source directory
+    and save them to the destination directory.
+    """
+    for class_dir in src_dir_path.iterdir():
+        if class_dir.is_dir():
+            dest_class_dir = dest_dir_path / class_dir.name
+            dest_class_dir.mkdir(parents=True, exist_ok=True)
+            transform_dir(class_dir, dest_class_dir)
 
 
 def main():
     try:
 
-        if len(sys.argv) not in (2, 3):
+        if len(sys.argv) != 3:
             print("Error: the arguments are bad")
             return
 
         source_dir = Path(sys.argv[1])
         is_path_dir(source_dir)
 
+        transformed_dirpath = Path(sys.argv[2])
+        transformation_dir(source_dir, transformed_dirpath)
+
         configure_device()
-        train_tf(source_dir)
+        train_tf(transformed_dirpath)
 
     except Exception as e:
         print(f"Error: {str(e)}")

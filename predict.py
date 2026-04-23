@@ -55,7 +55,8 @@ def main():
         df = pd.read_csv(model_path / "class_names.csv")
         class_names = df["class_name"].tolist()
 
-        img = tf.keras.utils.load_img(to_predict_src, target_size=(128, 128))
+        #img = tf.keras.utils.load_img(to_predict_src, target_size=(128, 128))
+        img = tf.keras.utils.load_img(to_predict_src, target_size=(256, 256))
         img_array = tf.keras.utils.img_to_array(img)
 
         # add batch dimension so shape becomes (1, 256, 256, 3)
