@@ -21,7 +21,7 @@ def configure_device():
 def train_tf(source_dir: Path):
     output_dir = source_dir / "splited"
     split_dataset(source_dir, output_dir)
-    
+
     train_set = output_dir / "train"
     val_set = output_dir / "val"
 
