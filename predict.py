@@ -14,35 +14,14 @@ def main():
 
     try:
 
-        if len(sys.argv) not in (2, 3):
-            print("Error: the arguments are bad")
+        if len(sys.argv) != 3:
+            print("Usage: ./predict.py <image_path> <model_dir>")
             return
 
         to_predict_src = Path(sys.argv[1])
         is_image_file(to_predict_src)
 
-        if len(sys.argv) == 3:
-            model_path = Path(sys.argv[2])
-        else:
-            all_parts = list(to_predict_src.parts) + [to_predict_src.stem]
-            model_path = None
-            for plant in ("Apple", "Grape"):
-                if any(plant in part for part in all_parts):
-                    candidates = [
-                        Path("augmented_directory") / plant / "splited",
-                        Path("test_augmented") / plant / "splited",
-                        Path("test") / plant / "splited",
-                        Path("models") / plant / "splited",
-                    ]
-                    for candidate in candidates:
-                        if candidate.exists():
-                            model_path = candidate
-                            break
-                    break
-            if model_path is None:
-                print("Error: cannot auto-detect model. "
-                      "Provide model path as second argument.")
-                return
+        model_path = Path(sys.argv[2])
         is_path_dir(model_path)
 
         transformations = transformation(to_predict_src)
@@ -55,7 +34,6 @@ def main():
         df = pd.read_csv(model_path / "class_names.csv")
         class_names = df["class_name"].tolist()
 
-        #img = tf.keras.utils.load_img(to_predict_src, target_size=(128, 128))
         img = tf.keras.utils.load_img(to_predict_src, target_size=(256, 256))
         img_array = tf.keras.utils.img_to_array(img)
 
