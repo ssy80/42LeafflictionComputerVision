@@ -8,3 +8,5 @@ distribution/
 *.zip
 Apple/
 Grape/
+test/
+.claude

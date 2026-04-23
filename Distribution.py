@@ -1,4 +1,5 @@
 #!/usr/bin/env my_env/bin/python3
+import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -84,10 +85,20 @@ def main():
         sub_dirs = list_dirs(dir_path)
 
         images_in_dir_dict = {}
-        for leaf_dir in sub_dirs:
-            count = count_images(leaf_dir)
-            folder_name = Path(leaf_dir).name
-            images_in_dir_dict[folder_name] = count
+        if sub_dirs:
+            for leaf_dir in sub_dirs:
+                count = count_images(leaf_dir)
+                folder_name = Path(leaf_dir).name
+                images_in_dir_dict[folder_name] = count
+        else:
+            image_extensions = {".jpg", ".jpeg"}
+            for f in Path(dir_path).iterdir():
+                if not (f.is_file() and f.suffix.lower() in image_extensions):
+                    continue
+                class_name = re.sub(r'\d+$', '', f.stem)
+                images_in_dir_dict[class_name] = (
+                    images_in_dir_dict.get(class_name, 0) + 1
+                )
 
         df = pd.DataFrame.from_dict(
             images_in_dir_dict,

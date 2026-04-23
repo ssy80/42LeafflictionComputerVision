@@ -1,20 +1,10 @@
 # Leaffliction
 
-*This project has been created as part of the 42 Advanced curriculum by ssian and axlee.*
+*42 Advanced — Computer Vision project by ssian and axlee.*
 
-## Description
+Classifies plant leaf diseases from images using a CNN trained on Apple and Grape leaves across 8 disease classes.
 
-Leaffliction is a machine learning project that classifies plant leaf diseases from images. Given a photo of an apple or grape leaf, the model identifies which disease (if any) is present across 8 classes.
-
-The pipeline covers the full ML workflow:
-
-* **Distribution** — visualise the class balance of a dataset as pie and bar charts.
-* **Augmentation** — expand the dataset by applying 6 transformations per image (Flip, Rotate, Skew, Contrast, Crop, Distortion), saving augmented variants alongside the original.
-* **Transformation** — apply computer vision preprocessing (Original, Gaussian blur, Mask, ROI, Analyze, Pseudolandmarks) and display a colour histogram.
-* **Training** — split 80/20 and train a CNN (TensorFlow/Keras) on the augmented dataset with GPU support. Model saved to `<output_dir>/splited/`.
-* **Prediction** — classify a single leaf image and display the original alongside its masked transformation and predicted disease label.
-
-### Dataset Classes
+## Dataset Classes
 
 | Apple | Grape |
 |---|---|
@@ -23,32 +13,38 @@ The pipeline covers the full ML workflow:
 | Apple\_rust | Grape\_healthy |
 | Apple\_scab | Grape\_spot |
 
+---
+
 ## Project Structure
 
 ```
 Leaffliction/
-├── Distribution.py     ← analyse dataset class balance (pie + bar charts)
-├── Augmentation.py     ← apply 6 augmentations to a single image
-├── Transformation.py   ← apply 6 CV transformations + colour histogram
-├── train.py            ← transform images, train CNN, save model
-├── predict.py          ← load model and predict a leaf image
-├── utils.py            ← shared path/file validation utilities
-├── split_file.py       ← 80/20 train/val split helper
+├── Distribution.py       ← pie + bar charts of class balance
+├── Augmentation.py       ← apply 6 augmentations to a single image
+├── Transformation.py     ← apply 6 PlantCV transformations + histogram
+├── train.py              ← train CNN, save model + learnings zip
+├── predict.py            ← classify a leaf image
+├── utils.py              ← shared validation utilities
+├── split_file.py         ← 80/20 stratified train/val split
 ├── scripts/
-│   ├── setup.sh           ← environment setup (venv + dependencies)
-│   ├── remove.sh          ← tear down environment and generated data
-│   ├── augmentation.sh    ← batch augmentation across all classes
-│   └── transformation.sh  ← batch transformation of augmented_directory/
+│   ├── setup.sh          ← create venv, install dependencies
+│   ├── remove.sh         ← tear down venv and all generated data
+│   ├── augmentation.sh   ← batch augment + balance all classes
+│   ├── transformation.sh ← batch transform augmented_directory/
+│   ├── train.sh          ← train Apple and Grape models in sequence
+│   └── lint.sh           ← run flake8 on all source files
 ├── requirements.txt
 ├── en.subject.pdf
-└── test/               ← test images for prediction
+└── test/                 ← sample images for prediction
     ├── Apple/
     └── Grape/
 ```
 
+---
+
 ## Setup
 
-Place your dataset images in a directory following this structure:
+Place your dataset at the project root:
 
 ```
 Apple/
@@ -63,31 +59,32 @@ Grape/
 └── Grape_spot/
 ```
 
-Then run:
+Then install the environment:
 
 ```bash
 source scripts/setup.sh
 ```
 
-> On machines with an NVIDIA GPU, `scripts/setup.sh` automatically installs CUDA-enabled TensorFlow and configures the library paths. On CPU-only machines (e.g. school PCs) it installs plain TensorFlow.
+> On machines with an NVIDIA GPU, setup automatically installs CUDA-enabled TensorFlow and patches `LD_LIBRARY_PATH`. On CPU-only machines it installs plain TensorFlow.
+
+If GPU is not detected after setup, re-source the activate script:
+
+```bash
+deactivate && source my_env/bin/activate
+```
 
 ---
 
-## Order of Execution
+## Full Pipeline
 
 ```bash
-source scripts/setup.sh                                       # 1. set up environment
-./Distribution.py ./Apple                                     # 2. analyse raw dataset
-./scripts/augmentation.sh                                     # 3. augment and balance → augmented_directory/
-./Distribution.py ./augmented_directory                       # 4. verify balance after augmentation
-./train.py ./augmented_directory/Apple                        # 5. train Apple model → Apple_learnings.zip
-./train.py ./augmented_directory/Grape                        # 6. train Grape model → Grape_learnings.zip
-./predict.py "./Apple/Apple_healthy/image (1).JPG"            # 7. predict (auto-detects model)
+source scripts/setup.sh                              # 1. set up environment
+./Distribution.py ./Apple                            # 2. analyse raw dataset
+./scripts/augmentation.sh                            # 3. augment + balance → augmented_directory/
+./Distribution.py ./augmented_directory              # 4. verify class balance
+./scripts/train.sh                                   # 5. train Apple + Grape models
+./predict.py "./Apple/Apple_healthy/image (1).JPG"   # 6. predict (auto-detects model)
 ```
-
-> **Note — Transformation is a standalone deliverable (Part 3), not a preprocessing step for training.**
-> Run `./Transformation.py <image>` to visualise PlantCV analysis on a single leaf.
-> The CNN is trained directly on the original and augmented images.
 
 ---
 
@@ -95,133 +92,140 @@ source scripts/setup.sh                                       # 1. set up enviro
 
 ### Part 1 — Distribution
 
-Analyse a dataset directory and display pie + bar charts for each class.
+Displays pie and bar charts for each class in a dataset directory.
 
 ```bash
 ./Distribution.py <directory>
 ```
 
-Examples:
 ```bash
 ./Distribution.py ./Apple
 ./Distribution.py ./Grape
+./Distribution.py ./augmented_directory
 ```
 
 ---
 
 ### Part 2 — Augmentation
 
-Apply 6 augmentations to a single image. Augmented files are saved alongside the original, named `<stem>_Flip.JPG`, `<stem>_Rotate.JPG`, etc.
+Applies 6 augmentations to a single image (Flip, Rotate, Skew, Contrast, Crop, Distortion). Saves results alongside the original as `<stem>_Flip.JPG`, etc.
 
 ```bash
 ./Augmentation.py <image_path>
 ```
 
-Example:
 ```bash
 ./Augmentation.py "./Apple/Apple_healthy/image (1).JPG"
 ```
 
-To batch-augment and balance the full dataset across all classes:
+To augment the full dataset, balance all 8 classes to the same count, and create `augmented_directory/`:
 
 ```bash
 ./scripts/augmentation.sh
-```
-
-This augments every original image with 6 variants (Flip, Rotate, Skew, Contrast, Crop, Distortion), trims all classes to the same count, and creates `augmented_directory/` — a flat directory containing all 8 class folders, ready for distribution analysis:
-
-```bash
-./Distribution.py ./augmented_directory/Apple
-./Distribution.py ./augmented_directory/Grape
 ```
 
 ---
 
 ### Part 3 — Transformation
 
-Apply 6 computer vision transformations to an image and display the results alongside a colour histogram.
+Applies 6 PlantCV transformations to a single image and displays a colour histogram.
 
 ```bash
 ./Transformation.py <image_path>
 ```
 
-Example:
 ```bash
 ./Transformation.py "./Apple/Apple_healthy/image (1).JPG"
 ```
 
-To batch-transform a single directory and save results:
+To save transformations for a whole directory:
 
 ```bash
 ./Transformation.py -src <source_dir> -dst <dest_dir>
 ```
 
-To batch-transform all classes across Apple and Grape into `augmented_directory/Apple/` and `augmented_directory/Grape/`:
+To transform all the images in the directory:
 
 ```bash
 ./scripts/transformation.sh
 ```
 
+To see the progress of transformation:
+
+```bash
+find ./augmented_directory/Apple -name "*.JPG" | wc -l
+```
+
+To see progress per class:
+
+```bash
+for d in ./augmented_directory/Apple/*/; do echo "$(find "$d" -name "*.JPG" | wc -l) $(basename $d)"; done
+
+for d in ./augmented_directory/Grape/*/; do echo "$(find "$d" -name "*.JPG" | wc -l) $(basename $d)"; done
+```
 ---
 
 ### Part 4 — Training
 
-Train a CNN on an augmented labelled image directory, then package the model and class names into a zip.
+Trains a CNN on a labelled image directory. Splits 80/20 train/val, trains with early stopping, and saves the model plus a learnings zip.
 
 ```bash
-./train.py <transformed_dir>
+./train.py <dataset_dir>
 ```
 
-If GPU is not found
-```bash
-grep -n "nvidia" my_env/bin/activate
-
-deactivate && source my_env/bin/activate
-
-```
-
-To batch train both Apple and Grape
-```bash
-./scripts/train.sh
-```
-
-Outputs:
-- `<transformed_dir>/splited/leaf_model.keras` — trained model
-- `<transformed_dir>/splited/class_names.csv` — class label map
-- `<transformed_dir>/../<name>_learnings.zip` — zip containing model files and all transformed images
-
-Examples:
 ```bash
 ./train.py ./augmented_directory/Apple   # → augmented_directory/Apple_learnings.zip
 ./train.py ./augmented_directory/Grape   # → augmented_directory/Grape_learnings.zip
 ```
 
-GPU is detected automatically — no extra flags needed.
+To train both in one go:
+
+```bash
+./scripts/train.sh
+```
+
+**Outputs per model:**
+- `<dataset_dir>/splited/leaf_model.keras`
+- `<dataset_dir>/splited/class_names.csv`
+- `<dataset_dir>/../<name>_learnings.zip`
+
+GPU is detected automatically — no flags needed.
 
 ---
 
 ### Part 5 — Prediction
 
-Classify a leaf image using a trained model. Displays the original and masked transformation with the predicted class label.
+Classifies a leaf image and displays the original alongside its masked transformation with the predicted class label.
 
 ```bash
 ./predict.py <image_path> [model_dir]
 ```
 
-If `model_dir` is omitted, the model is auto-detected from the image path (`Apple` or `Grape`).
+The model is auto-detected from `Apple` or `Grape` in the image path. Pass `model_dir` explicitly if needed.
 
-Examples:
 ```bash
-./predict.py "./Apple/Apple_healthy/image (1).JPG"                      # auto-detect
-./predict.py "./test/Apple/image (1).JPG" augmented_directory/Apple/splited   # explicit
-./predict.py "./test/Grape/image (1).JPG" augmented_directory/Grape/splited
+./predict.py "./Apple/Apple_healthy/image (1).JPG"
+./predict.py "./test/Apple/image (1).JPG" augmented_directory/Apple/splited
 ```
+
+---
+
+## Turn-in
+
+After training, generate `signature.txt` from the learnings zip:
+
+```bash
+sha1sum augmented_directory/Apple_learnings.zip > signature.txt
+```
+
+Commit `signature.txt` to the repository. During evaluation, the hash will be verified against the zip — they must match exactly.
+
+> Do **not** commit the dataset or zip files. Do **not** retrain after generating `signature.txt`.
 
 ---
 
 ## Resources
 
-* [42 Curriculum — Leaffliction subject](en.subject.pdf)
-* [TensorFlow — Image classification guide](https://www.tensorflow.org/tutorials/images/classification)
-* [PlantCV documentation](https://plantcv.readthedocs.io/)
-* [Wikipedia: Convolutional Neural Network](https://en.wikipedia.org/wiki/Convolutional_neural_network)
+- [Subject PDF](en.subject.pdf)
+- [TensorFlow — Image classification](https://www.tensorflow.org/tutorials/images/classification)
+- [PlantCV documentation](https://plantcv.readthedocs.io/)

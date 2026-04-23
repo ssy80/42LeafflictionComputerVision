@@ -3,21 +3,12 @@
 APPLE="./Apple"
 GRAPE="./Grape"
 
-# Step 1: Augment all original images in each class (skip already-augmented files)
+# Step 1: Augment all original images in each class (one Python call per class)
 for species_dir in "$APPLE" "$GRAPE"; do
     for class_dir in "$species_dir"/*/; do
         [ -d "$class_dir" ] || continue
         echo "Augmenting $(basename "$class_dir")..."
-        find "$class_dir" -maxdepth 1 -name "*.JPG" \
-            ! -name "*_Flip.JPG" \
-            ! -name "*_Rotate.JPG" \
-            ! -name "*_Skew.JPG" \
-            ! -name "*_Contrast.JPG" \
-            ! -name "*_Crop.JPG" \
-            ! -name "*_Distortion.JPG" \
-            -print0 | while IFS= read -r -d '' f; do
-            ./Augmentation.py "$f"
-        done
+        ./Augmentation.py "$class_dir"
     done
 done
 

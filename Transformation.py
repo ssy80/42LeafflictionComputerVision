@@ -336,11 +336,14 @@ def main():
     try:
         if len(_sys.argv) > 1 and not _sys.argv[1].startswith('-'):
             src_path = Path(_sys.argv[1])
-            is_image_file(src_path)
-            img = cv2.imread(str(src_path))
-            transformed = transformation(src_path)
-            display_transformations(transformed)
-            plot_leaf_color_histogram(img, transformed.get("mask"))
+            if src_path.is_dir():
+                transform_dir(src_path, src_path)
+            else:
+                is_image_file(src_path)
+                img = cv2.imread(str(src_path))
+                transformed = transformation(src_path)
+                display_transformations(transformed)
+                plot_leaf_color_histogram(img, transformed.get("mask"))
             return
 
         parser = argparse.ArgumentParser(

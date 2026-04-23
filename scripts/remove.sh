@@ -35,4 +35,4 @@ done
 rm -f ./test/Apple_learnings.zip ./test/Grape_learnings.zip
 
 # Remove other generated data
-rm -rf models/ logs/ distribution/ debug/ __pycache__ .pytest_cache
+rm -rf models/ logs/ distribution/ debug/ test/ __pycache__ .pytest_cache

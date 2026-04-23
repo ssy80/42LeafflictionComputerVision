@@ -109,10 +109,23 @@ def main():
             print("Error: the arguments are bad")
             return
 
-        filepath = Path(sys.argv[1])
+        path = Path(sys.argv[1])
 
-        is_image_file(filepath)
-        augmentation(filepath)
+        if path.is_dir():
+            augmented_suffixes = (
+                "_Flip", "_Rotate", "_Skew",
+                "_Contrast", "_Crop", "_Distortion"
+            )
+            images = [
+                f for f in path.rglob("*.JPG")
+                if not any(f.stem.endswith(s) for s in augmented_suffixes)
+            ]
+            for img_path in sorted(images):
+                print(f"Augmenting {img_path.name}...")
+                augmentation(img_path)
+        else:
+            is_image_file(path)
+            augmentation(path)
 
     except Exception as e:
         print(f"Error: {str(e)}")
