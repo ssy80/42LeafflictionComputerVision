@@ -7,21 +7,18 @@ if [ ! -d "$SRC" ]; then
     exit 1
 fi
 
-for class_dir in "$SRC"/*/; do
-    [ -d "$class_dir" ] || continue
-    class=$(basename "$class_dir")
+for species_dir in "$SRC"/*/; do
+    [ -d "$species_dir" ] || continue
+    species=$(basename "$species_dir")
 
-    case "$class" in
-        Apple_*) species="Apple" ;;
-        Grape_*) species="Grape" ;;
-        *)
-            echo "Skipping unknown class: $class"
-            continue
-            ;;
-    esac
+    for class_dir in "$species_dir"*/; do
+        [ -d "$class_dir" ] || continue
+        class=$(basename "$class_dir")
+        dst="$SRC/${species}_transformed/$class"
 
-    echo "Transforming $class..."
-    ./Transformation.py -src "$class_dir" -dst "$SRC/$species/$class"
+        echo "Transforming $class..."
+        ./Transformation.py -src "$class_dir" -dst "$dst"
+    done
 done
 
-echo "Done. Transformed images saved under $SRC/Apple/ and $SRC/Grape/"
+echo "Done. Transformed images saved under $SRC/Apple_transformed/ and $SRC/Grape_transformed/"

@@ -28,10 +28,16 @@ def main():
             model_path = None
             for plant in ("Apple", "Grape"):
                 if any(plant in part for part in all_parts):
-                    candidate = Path("augmented_directory") / plant / "splited"
-                    if not candidate.exists():
-                        candidate = Path("models") / plant / "splited"
-                    model_path = candidate
+                    candidates = [
+                        Path("augmented_directory") / plant / "splited",
+                        Path("test_augmented") / plant / "splited",
+                        Path("test") / plant / "splited",
+                        Path("models") / plant / "splited",
+                    ]
+                    for candidate in candidates:
+                        if candidate.exists():
+                            model_path = candidate
+                            break
                     break
             if model_path is None:
                 print("Error: cannot auto-detect model. "
