@@ -68,15 +68,10 @@ def train_tf(source_dir: Path):
         metrics=["accuracy"]
     )
 
-    early_stop = tf.keras.callbacks.EarlyStopping(
-        monitor="val_accuracy", patience=5, restore_best_weights=True
-    )
-
     model.fit(
         train_ds,
         validation_data=val_ds,
         epochs=10,
-        callbacks=[early_stop]
     )
 
     _, accuracy = model.evaluate(val_ds)
