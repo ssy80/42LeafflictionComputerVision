@@ -130,11 +130,7 @@ def pseudolandmarks(img: np.ndarray):
     pcv.params.debug_outdir = "./debug"
     debug_dir = pcv.params.debug_outdir
 
-    if os.path.exists(debug_dir):
-        shutil.rmtree(debug_dir)
-        os.makedirs(debug_dir)
-    else:
-        os.makedirs(debug_dir)
+    clear_debug_files(debug_dir)
 
     pcv.outputs.clear()
 
@@ -143,7 +139,19 @@ def pseudolandmarks(img: np.ndarray):
     files = glob.glob(os.path.join(debug_dir, "*"))
     final_img = cv2.imread(files[0])
 
+    clear_debug_files(debug_dir)
+
     return final_img
+
+
+def clear_debug_files(debug_dir: str):
+    os.makedirs(debug_dir, exist_ok=True)
+
+    for path in glob.glob(os.path.join(debug_dir, "*")):
+        if os.path.isfile(path) or os.path.islink(path):
+            os.remove(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(path)
 
 
 def analyze(img: np.ndarray):

@@ -154,15 +154,15 @@ To transform all the images in the directory:
 To see the progress of transformation:
 
 ```bash
-find ./augmented_directory/Apple -name "*.JPG" | wc -l
+find ./augmented_directory/Apple_transformed/ -name "*.JPG" | wc -l
 ```
 
 To see progress per class:
 
 ```bash
-for d in ./augmented_directory/Apple/*/; do echo "$(find "$d" -name "*.JPG" | wc -l) $(basename $d)"; done
+for d in ./augmented_directory/Apple_transformed/*/; do echo "$(find "$d" -name "*.JPG" | wc -l) $(basename $d)"; done
 
-for d in ./augmented_directory/Grape/*/; do echo "$(find "$d" -name "*.JPG" | wc -l) $(basename $d)"; done
+for d in ./augmented_directory/Grape_transformed/*/; do echo "$(find "$d" -name "*.JPG" | wc -l) $(basename $d)"; done
 ```
 ---
 
